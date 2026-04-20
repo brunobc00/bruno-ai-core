@@ -14,6 +14,17 @@ Prover uma camada de abstração estável para LLMs locais, mantendo a privacida
 - Testar conexão: `source .venv/bin/activate && python3 core/ollama_wrapper.py`
 - Instalar novas ferramentas: `pip install <pacote>`
 
+## Protocolo de Trabalho (Estimativa & Aprovação)
+
+Antes de iniciar qualquer tarefa, o Antigravity deve apresentar um quadro de estimativa e aguardar a aprovação explícita do usuário:
+
+| Recurso | Descrição |
+| :--- | :--- |
+| **Inteligência** | Antigravity (Cloud) vs Ollama (Local GPU) |
+| **Monetização** | Estimativa de créditos/tokens consumidos (Google Billing) |
+| **Recursos Locais** | Uso estimado de VRAM e processamento local |
+| **Tempo** | Prazo estimado para conclusão |
+
 ## Configurações de Modelos
 - Chat: `llama3.1:8b`
 - Embeddings: `nomic-embed-text`
