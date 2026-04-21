@@ -1,0 +1,1499 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Antigravity | Documentation Hub</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Fira+Code&display=swap" rel="stylesheet">
+    <style>
+        .alert-banner {
+            background: rgba(31, 255, 140, 0.08);
+            border: 1px solid rgba(31, 255, 140, 0.3);
+            border-radius: 12px;
+            padding: 1.2rem 1.8rem;
+            margin-bottom: 2.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .alert-banner .alert-icon { font-size: 1.4rem; }
+        .alert-banner .alert-text { color: var(--text-secondary); font-size: 0.95rem; line-height: 1.5; }
+        .alert-banner .alert-text strong { color: var(--accent-color); }
+
+        .step-list { list-style: none; margin-top: 1rem; }
+        .step-list li {
+            display: flex;
+            gap: 1rem;
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+        .step-list li:last-child { border-bottom: none; }
+        .step-num {
+            min-width: 28px;
+            height: 28px;
+            background: rgba(31, 255, 140, 0.1);
+            border: 1px solid rgba(31, 255, 140, 0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--accent-color);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            margin-left: 0.5rem;
+        }
+        .badge-green { background: rgba(31, 255, 140, 0.15); color: #1fff8c; }
+        .badge-red { background: rgba(255, 80, 80, 0.15); color: #ff5050; }
+        .badge-yellow { background: rgba(255, 200, 0, 0.15); color: #ffc800; }
+
+        .card-full { grid-column: 1 / -1; }
+        .card-accent { border-color: rgba(31, 255, 140, 0.3); }
+
+        .table-wrapper { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        thead th {
+            text-align: left;
+            padding: 0.8rem 1rem;
+            color: var(--accent-color);
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        tbody td { padding: 0.8rem 1rem; color: var(--text-secondary); border-bottom: 1px solid rgba(255,255,255,0.04); }
+        tbody tr:last-child td { border-bottom: none; }
+        tbody tr:hover td { background: rgba(255,255,255,0.02); }
+        tbody td a { color: var(--accent-color); text-decoration: none; }
+        tbody td a:hover { text-decoration: underline; }
+
+        .page > header { margin-bottom: 3rem; }
+        .page > header h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+        .section-title { font-size: 1.1rem; font-weight: 600; color: var(--text-primary); margin: 2.5rem 0 1rem; }
+
+        .cmd-line {
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+            color: var(--accent-color);
+        }
+
+        .sidebar { overflow-y: auto; }
+        .sidebar::-webkit-scrollbar { width: 4px; }
+        .sidebar::-webkit-scrollbar-track { background: transparent; }
+        .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+        /* ── Brand Panel ─────────────────────────────────────────────── */
+        .brand-panel {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 2rem;
+            align-items: start;
+        }
+        @media (max-width: 800px) { .brand-panel { grid-template-columns: 1fr; } }
+
+        .brand-logo-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            min-width: 200px;
+        }
+        .logo-preview {
+            width: 200px;
+            height: 100px;
+            background: #fff;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+        .logo-preview img {
+            max-width: 180px;
+            max-height: 90px;
+            object-fit: contain;
+        }
+        .logo-no-img {
+            color: #555;
+            font-size: 0.8rem;
+            text-align: center;
+            padding: 1rem;
+        }
+        .upload-zone {
+            width: 200px;
+            border: 2px dashed rgba(255,255,255,0.15);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .upload-zone:hover, .upload-zone.drag-over {
+            border-color: var(--accent-color);
+            background: rgba(31,255,140,0.05);
+        }
+        .upload-zone p { color: var(--text-secondary); font-size: 0.8rem; margin-top: 0.4rem; }
+        .upload-zone .upload-icon { font-size: 1.6rem; }
+
+        .btn-brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.04);
+            color: var(--text-secondary);
+            width: 100%;
+            justify-content: center;
+        }
+        .btn-brand:hover { border-color: var(--accent-color); color: var(--accent-color); }
+        .btn-brand:disabled { opacity: 0.35; cursor: not-allowed; }
+        .btn-brand-primary {
+            background: rgba(31,255,140,0.1);
+            border-color: rgba(31,255,140,0.4);
+            color: var(--accent-color);
+        }
+        .btn-brand-primary:hover { background: rgba(31,255,140,0.2); }
+
+        .brand-colors-area { flex: 1; }
+        .color-swatches-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .color-swatch-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+        .swatch-circle {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.1);
+            transition: transform 0.2s, border-color 0.2s;
+            position: relative;
+        }
+        .swatch-circle:hover { transform: scale(1.1); border-color: rgba(255,255,255,0.4); }
+        .swatch-circle input[type="color"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+            border: none;
+            padding: 0;
+        }
+        .swatch-label { font-size: 0.72rem; color: var(--text-secondary); text-align: center; }
+        .swatch-hex { font-family: 'Fira Code', monospace; font-size: 0.75rem; color: var(--text-primary); }
+
+        .css-preview-block {
+            background: #000;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 1.2rem;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.78rem;
+            color: #a0a0a0;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre;
+            display: none;
+            margin-top: 1rem;
+        }
+        .css-preview-block.visible { display: block; }
+
+        /* Toast */
+        .toast-container {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .toast {
+            padding: 0.8rem 1.4rem;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            animation: toastIn 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+        .toast-success { background: rgba(31,255,140,0.15); border: 1px solid rgba(31,255,140,0.4); color: #1fff8c; }
+        .toast-error   { background: rgba(255,80,80,0.15);  border: 1px solid rgba(255,80,80,0.4);  color: #ff5050; }
+        .toast-info    { background: rgba(100,160,255,0.15);border: 1px solid rgba(100,160,255,0.4);color: #64a0ff; }
+        @keyframes toastIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+        .path-hint { font-family: 'Fira Code', monospace; font-size: 0.72rem; color: #555; margin-top: 0.3rem; }
+
+        .company-info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .company-info-item { display: flex; flex-direction: column; gap: 0.2rem; }
+        .company-info-item .info-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: #555; font-weight: 700; }
+        .company-info-item .info-value { font-size: 0.9rem; color: var(--text-primary); }
+    </style>
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="logo">
+            <span>🛸</span> Antigravity
+        </div>
+        <ul class="nav-links">
+            <li><a href="#dashboard" class="nav-item active">🏠 Visão Geral</a></li>
+            <li><a href="#setup" class="nav-item">🛠️ Setup & Filosofia</a></li>
+            <li class="nav-label">Repositórios</li>
+            <li><a href="#repo-cemig" class="nav-item">⚡ Cemig</a></li>
+            <li><a href="#repo-redmine" class="nav-item">🔴 Redmine Auto</a></li>
+            <li><a href="#repo-core" class="nav-item">🧠 AI Core</a></li>
+            <li><a href="#repo-contracts" class="nav-item">📄 Contracts</a></li>
+            <li><a href="#repo-orcamentos" class="nav-item">💰 Orçamentos</a></li>
+            <li class="nav-label">Referência</li>
+            <li><a href="#normas" class="nav-item">📚 Normas CEMIG</a></li>
+        </ul>
+    </nav>
+
+    <main class="main-content">
+
+        <!-- ======================== DASHBOARD ======================== -->
+        <section id="dashboard" class="page active">
+            <header>
+                <h1>Painel de Controle</h1>
+                <p class="subtitle">Visão geral da infraestrutura Antigravity — 5 repositórios ativos.</p>
+            </header>
+
+            <div class="alert-banner">
+                <span class="alert-icon">🔴</span>
+                <div class="alert-text">
+                    <strong>Redmine Automation</strong> é o coração operacional do ecossistema.
+                    Toda tarefa aberta, prazo, upload de protocolo e status de cliente passa por ele.
+                    Configure sua <code>REDMINE_API_KEY</code> antes de qualquer outra coisa.
+                    <a href="#repo-redmine" style="color: var(--accent-color); margin-left: 0.5rem;">Ver manual →</a>
+                </div>
+            </div>
+
+            <div class="grid">
+                <div class="card repo-card" data-target="repo-cemig">
+                    <h3>⚡ Cemig</h3>
+                    <p>Gestão de protocolos de ligação nova/aumento de carga. Contém workflow de submissão, checklist de documentos e biblioteca de normas técnicas.</p>
+                </div>
+                <div class="card repo-card" data-target="repo-redmine">
+                    <h3>🔴 Redmine Auto</h3>
+                    <p>Automação de tarefas via API REST. Upload de arquivos, enriquecimento de issues, sincronização de prazos e renderização de wikis HTML.</p>
+                </div>
+                <div class="card repo-card" data-target="repo-core">
+                    <h3>🧠 AI Core</h3>
+                    <p>Motor de IA local (Ollama + AMD RX 7600). Wrapper reutilizável para todos os projetos. Nunca use o Python global — ative o <code>.venv</code>.</p>
+                </div>
+                <div class="card repo-card" data-target="repo-contracts">
+                    <h3>📄 Contracts</h3>
+                    <p>Geração automática de contratos PDF em Markdown para P.A. Construshop e Ecosauna. Dados de cliente via SSH do Protheus.</p>
+                </div>
+                <div class="card repo-card" data-target="repo-orcamentos">
+                    <h3>💰 Orçamentos</h3>
+                    <p>Criação e gerenciamento de orçamentos da Carvalhaes Comercial. Exportação para PDF com imagens comprobatórias anexadas automaticamente.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ======================== SETUP ======================== -->
+        <section id="setup" class="page">
+            <header>
+                <h1>Setup & Filosofia</h1>
+                <p class="subtitle">Como o ecossistema funciona e como você deve agir dentro dele.</p>
+            </header>
+
+            <div class="grid">
+                <div class="card">
+                    <h3>🧠 Ollama — IA Local</h3>
+                    <p>Toda leitura de PDF, análise de conformidade técnica e extração de dados não-estruturados é delegada ao Ollama rodando na GPU local (AMD RX 7600).</p>
+                    <p class="section-title" style="margin-top: 1.5rem; font-size: 0.85rem;">Modelos disponíveis</p>
+                    <ul style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem; padding-left: 1.2rem; line-height: 2;">
+                        <li><code>llama3.1:8b</code> — análise de documentos PT-BR</li>
+                        <li><code>qwen2.5:7b</code> — alternativa geral</li>
+                        <li><code>qwen2.5-coder:1.5b-base</code> — código rápido</li>
+                        <li><code>nomic-embed-text</code> — embeddings/busca semântica</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3>🐍 Python — Ambientes Isolados</h3>
+                    <p><strong style="color: var(--accent-color);">Regra de Ouro:</strong> Nunca instale pacotes no Python global. Todo projeto tem seu próprio <code>.venv</code>.</p>
+                    <div class="code-block" style="margin-top: 1.5rem;">
+                        <span class="cmd-line"># Criar e ativar</span><br>
+                        <span class="cmd-line">python3 -m venv .venv</span><br>
+                        <span class="cmd-line">source .venv/bin/activate</span><br><br>
+                        <span class="cmd-line"># Instalar dependências</span><br>
+                        <span class="cmd-line">pip install -r requirements.txt</span>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>🌿 Git — Padrão Universal</h3>
+                    <p>Cada repositório vai para seu próprio remote. Nunca faça commit na pasta raiz do workspace.</p>
+                    <div class="code-block" style="margin-top: 1.5rem;">
+                        <span class="cmd-line">git add .</span><br>
+                        <span class="cmd-line">git commit -m "&lt;tipo&gt;: &lt;descrição&gt;"</span><br>
+                        <span class="cmd-line">git push origin main</span>
+                    </div>
+                    <p style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.85rem;">⚠️ Nunca suba <code>.zip</code>, <code>.env</code> ou arquivos de protocolo brutos.</p>
+                </div>
+            </div>
+
+            <div class="section-title" style="margin-top: 3rem;">Como Usar o Ollama de Qualquer Projeto</div>
+            <div class="card card-full" style="margin-top: 1rem;">
+                <div class="code-block">
+                    <span class="cmd-line">import sys</span><br>
+                    <span class="cmd-line">sys.path.insert(0, "/home/bruno/Documentos/Github/bruno-ai-core")</span><br>
+                    <span class="cmd-line">from core.ollama_wrapper import OllamaWrapper</span><br><br>
+                    <span class="cmd-line">llm = OllamaWrapper(chat_model="llama3.1:8b")</span><br>
+                    <span class="cmd-line">resultado = llm.ask("Seu prompt aqui")</span>
+                </div>
+            </div>
+
+            <div class="section-title" style="margin-top: 3rem;">Como Agir — Guia de Comportamento</div>
+            <div class="card card-full" style="margin-top: 1rem;">
+                <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.95rem;">Antes de qualquer tarefa que envolva o Ollama, o agente DEVE pedir permissão usando este padrão:</p>
+                <div style="border-left: 3px solid var(--accent-color); padding-left: 1.5rem; margin-bottom: 2rem; color: var(--text-secondary); font-style: italic; line-height: 1.7;">
+                    "Bruno, vou executar isso aqui [explicação do que é leve/lógico] e vou deixar o Ollama executar isso [explicação do trabalho pesado], posso proceder assim?"
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr><th>Tipo de Tarefa</th><th>Responsável</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Lógica, planejamento, criação de scripts</td><td><span class="badge badge-yellow">Agente (AI)</span></td></tr>
+                            <tr><td>Leitura/interpretação de PDFs e documentos longos</td><td><span class="badge badge-green">Ollama</span></td></tr>
+                            <tr><td>Análise de conformidade técnica (normas, contratos)</td><td><span class="badge badge-green">Ollama</span></td></tr>
+                            <tr><td>Extração de dados não-estruturados</td><td><span class="badge badge-green">Ollama</span></td></tr>
+                            <tr><td>Edição de arquivos, Git, organização de pastas</td><td><span class="badge badge-yellow">Agente (AI)</span></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="section-title" style="margin-top: 3rem;">Regras Globais do Workspace</div>
+            <div class="card card-full" style="margin-top: 1rem;">
+                <div id="dynamic-rules">
+                    <!-- RULES_START -->
+<h1>Workspace Rules — /home/bruno/Documentos/Github</h1>
+<h2>Visão Geral</h2>
+<p>Este workspace contém múltiplos repositórios de projetos (CEMIG, contratos, automações Redmine, etc.).
+A infraestrutura de IA local está centralizada em <strong><code>bruno-ai-core/</code></strong>.</p>
+<hr />
+<h2>Regra Global: Usar Ollama para Trabalho Braçal</h2>
+<p><strong>Todo agente</strong> que operar neste workspace (Antigravity, Continue, scripts, etc.) deve seguir esta divisão:</p>
+<table>
+<thead>
+<tr>
+<th>Tipo de Tarefa</th>
+<th>Responsável</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Lógica, planejamento, criação de scripts</td>
+<td>Agente (AI)</td>
+</tr>
+<tr>
+<td>Leitura/interpretação de PDFs e documentos longos</td>
+<td><strong>Ollama</strong></td>
+</tr>
+<tr>
+<td>Análise de conformidade técnica (normas, contratos)</td>
+<td><strong>Ollama</strong></td>
+</tr>
+<tr>
+<td>Extração de dados não-estruturados</td>
+<td><strong>Ollama</strong></td>
+</tr>
+<tr>
+<td>Edição de arquivos, Git, organização de pastas</td>
+<td>Agente (AI)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>Comunicação Obrigatória</h2>
+<p>Antes de iniciar qualquer tarefa pesada que envolva o Ollama, o agente <strong>DEVE</strong> informar ao usuário e pedir permissão usando exatamente este padrão:</p>
+<blockquote>
+<p>"Bruno, vou executar isso aqui [explicação breve do que é leve e lógico] e vou deixar o Ollama executar isso [explicação do trabalho pesado], posso proceder assim?"</p>
+</blockquote>
+<hr />
+<h2>Infraestrutura de IA Local</h2>
+<p><strong>Repositório</strong>: <code>bruno-ai-core/</code>
+<strong>Wrapper</strong>: <code>bruno-ai-core/core/ollama_wrapper.py</code></p>
+<h3>Como usar em qualquer script deste workspace:</h3>
+<pre><code class="language-python">import sys
+sys.path.insert(0, &quot;/home/bruno/Documentos/Github/bruno-ai-core&quot;)
+from core.ollama_wrapper import OllamaWrapper
+
+llm = OllamaWrapper(chat_model=&quot;llama3.1:8b&quot;)
+resultado = llm.ask(&quot;Seu prompt aqui&quot;)
+</code></pre>
+<h3>Modelos disponíveis (GPU local):</h3>
+<table>
+<thead>
+<tr>
+<th>Modelo</th>
+<th>Uso</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>llama3.1:8b</code></td>
+<td>Análise de texto, documentos em PT-BR</td>
+</tr>
+<tr>
+<td><code>qwen2.5:7b</code></td>
+<td>Alternativa geral</td>
+</tr>
+<tr>
+<td><code>qwen2.5-coder:1.5b-base</code></td>
+<td>Código simples/rápido</td>
+</tr>
+<tr>
+<td><code>nomic-embed-text</code></td>
+<td>Embeddings/busca semântica</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>Repositórios e suas regras específicas</h2>
+<table>
+<thead>
+<tr>
+<th>Repositório</th>
+<th>Regras</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cemig/</code></td>
+<td><code>.continue/rules/01-projeto.md</code></td>
+</tr>
+<tr>
+<td><code>bruno-ai-core/</code></td>
+<td><code>.continue/rules/01-projeto.md</code></td>
+</tr>
+<tr>
+<td><code>br.com.paconstrushop.services.contracts/</code></td>
+<td><code>.continue/rules/01-projeto.md</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>🐍 Regras de Desenvolvimento Python</h2>
+<ol>
+<li><strong>Ambientes Virtuais Obrigatórios</strong>: NUNCA instale pacotes no Python global (<code>pip install package</code>). Sempre crie e utilize um ambiente virtual na pasta do projeto:</li>
+<li>Criar: <code>python3 -m venv .venv</code></li>
+<li>Ativar: <code>source .venv/bin/activate</code></li>
+<li>Registrar: Adicionar <code>.venv</code> ao <code>.gitignore</code>.</li>
+<li>
+<p><strong>Dependências</strong>: Mantenha sempre um <code>requirements.txt</code> atualizado na raiz de cada projeto para facilitar o setup via Ollama/Agente.</p>
+</li>
+<li>
+<p><strong>Arquivos de Protocolo (ZIP)</strong>: NUNCA suba arquivos <code>.zip</code> de protocolos da CEMIG ou documentos brutos de clientes no Git.</p>
+</li>
+<li>O Git deve conter apenas: Código, Markdown, JSON de dados e PDFs de normas.</li>
+<li>Arquivos de envio (Zips de documentos) devem ser salvos <strong>APENAS na tarefa do Redmine</strong> correspondente.</li>
+</ol>
+<hr />
+<h2>Git — Padrão Universal</h2>
+<p>Cada repositório vai para seu próprio remote. Nunca fazer commit na pasta raiz.</p>
+<pre><code class="language-bash"># Sempre dentro do repositório:
+git add . &amp;&amp; git commit -m &quot;&lt;tipo&gt;: &lt;descrição&gt;&quot; &amp;&amp; git push origin main
+</code></pre>
+                    <!-- RULES_END -->
+                </div>
+            </div>
+        </section>
+
+        <!-- ======================== CEMIG ======================== -->
+        <section id="repo-cemig" class="page">
+            <header>
+                <h1>⚡ Repositório: Cemig</h1>
+                <p class="subtitle">Workflow completo de protocolos de ligação nova e aumento de carga.</p>
+            </header>
+
+            <div class="section-title">Estrutura de Pastas</div>
+            <div class="grid" style="margin-top: 1rem;">
+                <div class="card">
+                    <h3>📁 clientes/</h3>
+                    <p>Pasta por cliente. Cada um tem subpastas <code>vN/</code> para cada versão do protocolo enviado.</p>
+                </div>
+                <div class="card">
+                    <h3>📁 normas/</h3>
+                    <p>Biblioteca de normas CEMIG (PDF + texto extraído). Fonte da verdade para validação técnica.</p>
+                </div>
+                <div class="card">
+                    <h3>📁 docs/</h3>
+                    <p>Fluxo de trabalho, checklists e guias de avaliação de clientes.</p>
+                </div>
+                <div class="card">
+                    <h3>📁 scripts/</h3>
+                    <p>Validador de normas ND (<code>validador_nd.py</code>) e ferramentas de apoio técnico.</p>
+                </div>
+            </div>
+
+            <div class="section-title" style="margin-top: 3rem;">Workflow de Submissão — Passo a Passo</div>
+            <div class="card card-full" style="margin-top: 1rem;">
+                <ul class="step-list">
+                    <li>
+                        <span class="step-num">1</span>
+                        <div>
+                            <strong style="color: var(--text-primary);">Triagem de Titularidade (Fase Zero)</strong><br>
+                            Valide a conta de energia (fatura atualizada). O nome na fatura coincide com o solicitante?
+                            Se <strong>não</strong>, o primeiro protocolo DEVE ser a "Troca de Titularidade".
+                        </div>
+                    </li>
+                    <li>
+                        <span class="step-num">2</span>
+                        <div>
+                            <strong style="color: var(--text-primary);">Definição Técnica (ND 5.1 / 5.2)</strong><br>
+                            Execute o validador para definir materiais: <code>python3 scripts/validador_nd.py [5.1 ou 5.2] [carga]</code><br>
+                            Confirme que disjuntor e cabos batem com o projeto. Para disjuntores &gt;200A, verifique a marca na lista <strong>PEC-11</strong>.
+                        </div>
+                    </li>
+                    <li>
+                        <span class="step-num">3</span>
+                        <div>
+                            <strong style="color: var(--text-primary);">Checklist de Documentos</strong><br>
+                            Pessoa Física: RG/CPF ou CNH + documento do imóvel + procuração com poderes específicos para "Cemig".<br>
+                            Pessoa Jurídica: Contrato Social/CCMEI + Cartão CNPJ + RG/CPF do sócio administrador + procuração.
+                        </div>
+                    </li>
+                    <li>
+                        <span class="step-num">4</span>
+                        <div>
+                            <strong style="color: var(--text-primary);">Protocolo no APR Web</strong><br>
+                            Os dados digitados no portal devem ser idênticos ao Formulário Excel e ao Projeto Técnico.
+                            Salve o comprovante imediatamente em <code>vN/protocolo/</code>.
+                        </div>
+                    </li>
+                    <li>
+                        <span class="step-num">5</span>
+                        <div>
+                            <strong style="color: var(--text-primary);">Gestão de Rejeição (Retorno)</strong><br>
+                            Copie o motivo da rejeição para <code>vN/retorno/motivo_rejeicao.txt</code>.
+                            Se erro técnico, rode o <code>validador_nd.py</code> novamente para encontrar a divergência.
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="section-title" style="margin-top: 3rem;">Documentos Obrigatórios — BT (Baixa Tensão)</div>
+            <div class="card card-full" style="margin-top: 1rem;">
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th>Documento</th><th>Pessoa Física</th><th>Pessoa Jurídica</th></tr></thead>
+                        <tbody>
+                            <tr><td>CPF + Documento com foto</td><td>✅</td><td>✅ (sócio administrador)</td></tr>
+                            <tr><td>Contrato Social / CCMEI</td><td>—</td><td>✅</td></tr>
+                            <tr><td>Cartão CNPJ</td><td>—</td><td>✅</td></tr>
+                            <tr><td>Documento do imóvel (IPTU, Escritura, Habite-se, etc.)</td><td>✅</td><td>✅</td></tr>
+                            <tr><td>Procuração com poderes específicos para "Cemig"</td><td>Quando aplicável</td><td>✅</td></tr>
+                            <tr><td>Termo de opção BT (carga &gt;75kW)</td><td>Quando aplicável</td><td>Quando aplicável</td></tr>
+                            <tr><td>Formulário de Partida de Motores (motor tri &gt;50CV / mono &gt;15CV)</td><td>Quando aplicável</td><td>Quando aplicável</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="section-title" style="margin-top: 3rem;">Biblioteca de Normas</div>
+            <div class="card card-accent" style="margin-top: 1rem; cursor: pointer;" onclick="showPage('normas')">
+                <h3>📚 Ver Índice Completo de Normas →</h3>
+                <p>30+ normas técnicas CEMIG (PDF + texto extraído) para validação com Ollama.</p>
+            </div>
+        </section>
+
+        <!-- ======================== REDMINE ======================== -->
+        <section id="repo-redmine" class="page">
+            <header>
+                <h1>🔴 Repositório: Redmine Automation</h1>
+                <p class="subtitle">Automação completa do Redmine via API REST — tarefas, uploads e wikis.</p>
+            </header>
+
+            <div class="alert-banner">
+                <span class="alert-icon">🔑</span>
+                <div class="alert-text">
+                    Configure o arquivo <code>.env</code> antes de qualquer script: <code>REDMINE_URL</code>, <code>REDMINE_API_KEY</code>, <code>EMAIL_USER</code>, <code>EMAIL_PASS</code>, <code>PROTHEUS_DB_PASS</code>.
+                    Execute <code>source .env</code> antes de rodar.
+                </div>
+            </div>
+
+            <div class="grid">
+                <div class="card">
+                    <h3>📁 scripts/</h3>
+                    <p>Scripts de automação Python. Principal: <code>enriquecer_tarefas.py</code> para enriquecer issues com dados do cliente.</p>
+                    <div class="code-block" style="margin-top: 1rem;">
+                        <span class="cmd-line">python scripts/enriquecer_tarefas.py</span>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>📁 docs/</h3>
+                    <p>Guias de renderização HTML e instruções da Wiki. Referência: <code>docs/instrucoes-redmine-wiki.md</code>.</p>
+                </div>
+                <div class="card">
+                    <h3>📁 templates/</h3>
+                    <p>Templates HTML/CSS para Wikis ricas no Redmine com glassmorphism e dark mode.</p>
+                </div>
+            </div>
+
+            <div class="section-title" style="margin-top: 3rem;">Como Subir HTML Rico na Wiki</div>
+            <div class="card card-full" style="margin-top: 1rem;">
+                <ul class="step-list">
+                    <li>
+                        <span class="step-num">1</span>
+                        <div>Suba o arquivo <code>.html</code> nos <strong>Arquivos</strong> do projeto no Redmine.</div>
+                    </li>
+                    <li>
+                        <span class="step-num">2</span>
+                        <div>Anote o <strong>ID do anexo</strong> gerado após o upload.</div>
+                    </li>
+                    <li>
+                        <span class="step-num">3</span>
+                        <div>Use o plugin <strong>View Customize</strong> para injetar um script jQuery que carregue o conteúdo no <code>srcdoc</code> de um <code>iframe</code> na wiki.</div>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="section-title" style="margin-top: 3rem;">Padrões da API</div>
+            <div class="card card-full" style="margin-top: 1rem;">
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th>Regra</th><th>Detalhe</th></tr></thead>
+                        <tbody>
+                            <tr><td>Custom Fields obrigatórios</td><td>Sempre valide os campos obrigatórios antes de tentar atualizar uma issue</td></tr>
+                            <tr><td>Cache local</td><td>Use cache para dados de clientes para reduzir chamadas à API</td></tr>
+                            <tr><td>Integração com Protheus</td><td>Para buscar dados de clientes, utilize o túnel SSH configurado no servidor</td></tr>
+                            <tr><td>Arquivos de protocolo</td><td>Salve os ZIPs <strong>SEMPRE</strong> como anexo da tarefa correspondente, nunca no Git</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ======================== AI CORE ======================== -->
+        <section id="repo-core" class="page">
+            <header>
+                <h1>🧠 Repositório: Bruno AI Core</h1>
+                <p class="subtitle">Motor de inteligência local — wrapper Ollama para toda a infraestrutura.</p>
+            </header>
+
+            <div class="grid">
+                <div class="card">
+                    <h3>📁 core/</h3>
+                    <p>Scripts base de conexão com o Ollama. Arquivo central: <code>ollama_wrapper.py</code>.</p>
+                </div>
+                <div class="card">
+                    <h3>📁 data/</h3>
+                    <p>Armazenamento de vetores (ChromaDB) e caches locais para buscas semânticas.</p>
+                </div>
+                <div class="card">
+                    <h3>📁 docs/hub/</h3>
+                    <p>Este próprio portal de documentação. Gerado por <code>update_hub.py</code>.</p>
+                </div>
+            </div>
+
+            <div class="section-title" style="margin-top: 3rem;">Protocolo de Trabalho — Estimativa & Aprovação</div>
+            <div class="card card-full" style="margin-top: 1rem;">
+                <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.95rem;">
+                    Antes de iniciar qualquer tarefa, o Antigravity deve apresentar este quadro de estimativa e aguardar aprovação explícita:
+                </p>
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th>Recurso</th><th>Descrição</th></tr></thead>
+                        <tbody>
+                            <tr><td><strong>Inteligência</strong></td><td>Antigravity (Cloud) vs Ollama (GPU local)</td></tr>
+                            <tr><td><strong>Monetização</strong></td><td>Estimativa de créditos/tokens consumidos</td></tr>
+                            <tr><td><strong>Recursos Locais</strong></td><td>Uso estimado de VRAM e processamento (AMD RX 7600)</td></tr>
+                            <tr><td><strong>Tempo</strong></td><td>Prazo estimado para conclusão</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="section-title" style="margin-top: 3rem;">Setup do Ambiente</div>
+            <div class="card card-full" style="margin-top: 1rem;">
+                <div class="code-block">
+                    <span class="cmd-line"># Na raiz do repositório bruno-ai-core/</span><br>
+                    <span class="cmd-line">python3 -m venv .venv</span><br>
+                    <span class="cmd-line">source .venv/bin/activate</span><br>
+                    <span class="cmd-line">pip install -r requirements.txt</span><br><br>
+                    <span class="cmd-line"># Testar conexão com Ollama</span><br>
+                    <span class="cmd-line">python3 core/ollama_wrapper.py</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ======================== CONTRACTS ======================== -->
+        <section id="repo-contracts" class="page">
+            <header>
+                <h1>📄 Repositório: Contracts</h1>
+                <p class="subtitle">Geração automática de contratos PDF para P.A. Construshop e Ecosauna.</p>
+            </header>
+
+            <div class="alert-banner">
+                <span class="alert-icon">⚠️</span>
+                <div class="alert-text">
+                    Configure o <code>.env</code> com as credenciais antes de qualquer script (<code>REDMINE_API_KEY</code>, <code>REDMINE_URL</code>, <code>PROTHEUS_DB_PASS</code>, etc.).
+                    Execute <code>source .env</code> a cada sessão.
+                </div>
+            </div>
+
+            <!-- Brand Panel -->
+            <div class="section-title">Identidade Visual — P.A. Construshop</div>
+            <div class="card card-full" style="margin-top: 1rem;">
+                <div class="brand-panel">
+                    <!-- Logo -->
+                    <div class="brand-logo-box">
+                        <div class="logo-preview">
+                            <img id="logo-preview-contracts"
+                                 src="../../../br.com.paconstrushop.services.contracts/assets/logo.png"
+                                 alt="Logo P.A. Construshop"
+                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
+                            <span class="logo-no-img" style="display:none">logo.png não encontrada</span>
+                        </div>
+                        <div class="upload-zone" id="drop-contracts"
+                             onclick="document.getElementById('logo-input-contracts').click()"
+                             ondragover="handleDragOver(event, 'drop-contracts')"
+                             ondragleave="handleDragLeave('drop-contracts')"
+                             ondrop="handleDrop(event, 'contracts')">
+                            <div class="upload-icon">🖼️</div>
+                            <p>Clique ou arraste<br>a nova logo aqui</p>
+                            <input type="file" id="logo-input-contracts" accept="image/*" hidden
+                                   onchange="handleLogoSelect(event, 'contracts')">
+                        </div>
+                        <button class="btn-brand btn-brand-primary" id="save-btn-contracts"
+                                onclick="saveLogo('contracts')" disabled>
+                            💾 Salvar logo no projeto
+                        </button>
+                        <span class="path-hint">assets/logo.png</span>
+                    </div>
+
+                    <!-- Colors -->
+                    <div class="brand-colors-area">
+                        <div class="color-swatches-grid">
+                            <div class="color-swatch-item">
+                                <div class="swatch-circle" style="background:#CC1417" title="Clique para editar">
+                                    <input type="color" value="#CC1417" id="color-contracts-primary"
+                                           oninput="onColorChange('contracts','primary',this.value)">
+                                </div>
+                                <span class="swatch-label">Primária</span>
+                                <span class="swatch-hex" id="hex-contracts-primary">#CC1417</span>
+                            </div>
+                            <div class="color-swatch-item">
+                                <div class="swatch-circle" style="background:#F5A623" title="Clique para editar">
+                                    <input type="color" value="#F5A623" id="color-contracts-accent"
+                                           oninput="onColorChange('contracts','accent',this.value)">
+                                </div>
+                                <span class="swatch-label">Destaque</span>
+                                <span class="swatch-hex" id="hex-contracts-accent">#F5A623</span>
+                            </div>
+                            <div class="color-swatch-item">
+                                <div class="swatch-circle" style="background:#FFF5F5;border:1px solid #444" title="Clique para editar">
+                                    <input type="color" value="#FFF5F5" id="color-contracts-bg"
+                                           oninput="onColorChange('contracts','bg',this.value)">
+                                </div>
+                                <span class="swatch-label">Fundo blockquote</span>
+                                <span class="swatch-hex" id="hex-contracts-bg">#FFF5F5</span>
+                            </div>
+                            <div class="color-swatch-item">
+                                <div class="swatch-circle" style="background:#222222" title="Clique para editar">
+                                    <input type="color" value="#222222" id="color-contracts-text"
+                                           oninput="onColorChange('contracts','text',this.value)">
+                                </div>
+                                <span class="swatch-label">Texto</span>
+                                <span class="swatch-hex" id="hex-contracts-text">#222222</span>
+                            </div>
+                        </div>
+
+                        <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:1rem;">
+                            Clique em qualquer cor para editar. Após ajustar, copie o CSS atualizado e substitua o arquivo
+                            <code>assets/contrato.css</code>.
+                        </p>
+
+                        <div style="display:flex;gap:0.8rem;flex-wrap:wrap;">
+                            <button class="btn-brand" onclick="toggleCSSPreview('contracts')">
+                                📋 Ver CSS atualizado
+                            </button>
+                            <button class="btn-brand btn-brand-primary" onclick="copyCSSToClipboard('contracts')">
+                                ⎘ Copiar CSS
+                            </button>
+                        </div>
+
+                        <pre class="css-preview-block" id="css-preview-contracts"></pre>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid" style="margin-top: 2rem;">
+                <div class="card">
+                    <h3>📁 contratos/</h3>
+                    <p>Arquivos Markdown de contratos organizados por cliente. Cada contrato é um <code>.md</code> com variáveis preenchidas.</p>
+                </div>
+                <div class="card">
+                    <h3>📁 assets/</h3>
+                    <p>Logo P.A. Construshop (<code>logo.png</code>, <code>logo_metade.png</code>) e CSS base dos contratos (<code>contrato.css</code>).</p>
+                </div>
+                <div class="card">
+                    <h3>📁 shared/scripts/</h3>
+                    <p><code>buscar-cliente.py</code> — busca dados do cliente no Protheus via SSH e preenche variáveis do contrato.</p>
+                </div>
+            </div>
+
+            <div class="section-title" style="margin-top: 3rem;">Domínios do Monorepo</div>
+            <div class="card card-full" style="margin-top: 1rem;">
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th>Pasta</th><th>O que é</th><th>CLAUDE.md</th></tr></thead>
+                        <tbody>
+                            <tr><td><code>contratos/</code></td><td>Geração de contratos PDF em Markdown</td><td><code>contratos/CLAUDE.md</code></td></tr>
+                            <tr><td><code>redmine/</code></td><td>POPs, wiki e instruções do Redmine</td><td>—</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.85rem;">
+                    Ao trabalhar em um domínio, leia o <code>CLAUDE.md</code> da pasta correspondente para regras específicas.
+                </p>
+            </div>
+
+            <div class="section-title" style="margin-top: 3rem;">Variáveis de Ambiente Necessárias</div>
+            <div class="card card-full" style="margin-top: 1rem;">
+                <div class="code-block">
+                    <span class="cmd-line">REDMINE_URL=https://tasks.jarvis.paconstrushop.com.br</span><br>
+                    <span class="cmd-line">REDMINE_API_KEY=...</span><br>
+                    <span class="cmd-line">EMAIL_USER=...</span><br>
+                    <span class="cmd-line">EMAIL_PASS=...</span><br>
+                    <span class="cmd-line">PROTHEUS_DB_PASS=...</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ======================== ORCAMENTOS ======================== -->
+        <section id="repo-orcamentos" class="page">
+            <header>
+                <h1>💰 Repositório: Orçamentos</h1>
+                <p class="subtitle">Criação e gerenciamento de orçamentos da <strong style="color:var(--accent-color)">Carvalhaes Comércio e Serviços</strong>.</p>
+            </header>
+
+            <!-- Dados da empresa -->
+            <div class="section-title">Dados da Empresa</div>
+            <div class="card card-full" style="margin-top: 1rem;">
+                <div class="company-info-grid">
+                    <div class="company-info-item">
+                        <span class="info-label">Razão Social</span>
+                        <span class="info-value">MARCELO COSTA CARVALHAES &amp; CIA LTDA - ME</span>
+                    </div>
+                    <div class="company-info-item">
+                        <span class="info-label">Nome Fantasia</span>
+                        <span class="info-value">Carvalhaes Comércio e Serviços</span>
+                    </div>
+                    <div class="company-info-item">
+                        <span class="info-label">CNPJ</span>
+                        <span class="info-value">07.224.007/0001-36</span>
+                    </div>
+                    <div class="company-info-item">
+                        <span class="info-label">Inscrição Estadual</span>
+                        <span class="info-value">5252077880031</span>
+                    </div>
+                    <div class="company-info-item">
+                        <span class="info-label">Endereço</span>
+                        <span class="info-value">Rua Coronel Otávio Meyer, 160 — Loja 105 (PA Shopping), Centro — Pouso Alegre / MG</span>
+                    </div>
+                    <div class="company-info-item">
+                        <span class="info-label">Contato</span>
+                        <span class="info-value">(35) 9 9961-6010 · carvalhaesiluminacao2@gmail.com</span>
+                    </div>
+                </div>
+                <p style="margin-top:1.2rem;color:var(--text-secondary);font-size:0.82rem;">
+                    Fonte: <code>dados_empresa.json</code> na raiz do repositório. Nunca hardcode esses dados nos scripts.
+                </p>
+            </div>
+
+            <!-- Brand Panel -->
+            <div class="section-title" style="margin-top:2.5rem;">Identidade Visual — Carvalhaes Comercial</div>
+            <div class="card card-full" style="margin-top: 1rem;">
+                <div class="brand-panel">
+                    <!-- Logo -->
+                    <div class="brand-logo-box">
+                        <div class="logo-preview">
+                            <img id="logo-preview-orcamentos"
+                                 src="../../../carvalhaescomercial-orcamentos/assets/logo_carvalhaes_comercial.png"
+                                 alt="Logo Carvalhaes Comercial"
+                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
+                            <span class="logo-no-img" style="display:none">logo_carvalhaes_comercial.png não encontrada</span>
+                        </div>
+                        <div class="upload-zone" id="drop-orcamentos"
+                             onclick="document.getElementById('logo-input-orcamentos').click()"
+                             ondragover="handleDragOver(event, 'drop-orcamentos')"
+                             ondragleave="handleDragLeave('drop-orcamentos')"
+                             ondrop="handleDrop(event, 'orcamentos')">
+                            <div class="upload-icon">🖼️</div>
+                            <p>Clique ou arraste<br>a nova logo aqui</p>
+                            <input type="file" id="logo-input-orcamentos" accept="image/*" hidden
+                                   onchange="handleLogoSelect(event, 'orcamentos')">
+                        </div>
+                        <button class="btn-brand btn-brand-primary" id="save-btn-orcamentos"
+                                onclick="saveLogo('orcamentos')" disabled>
+                            💾 Salvar logo no projeto
+                        </button>
+                        <span class="path-hint">assets/logo_carvalhaes_comercial.png</span>
+                    </div>
+
+                    <!-- Colors -->
+                    <div class="brand-colors-area">
+                        <div class="color-swatches-grid">
+                            <div class="color-swatch-item">
+                                <div class="swatch-circle" style="background:#0054A6" title="Clique para editar">
+                                    <input type="color" value="#0054A6" id="color-orcamentos-primary"
+                                           oninput="onColorChange('orcamentos','primary',this.value)">
+                                </div>
+                                <span class="swatch-label">Primária (Azul)</span>
+                                <span class="swatch-hex" id="hex-orcamentos-primary">#0054A6</span>
+                            </div>
+                            <div class="color-swatch-item">
+                                <div class="swatch-circle" style="background:#E30613" title="Clique para editar">
+                                    <input type="color" value="#E30613" id="color-orcamentos-secondary"
+                                           oninput="onColorChange('orcamentos','secondary',this.value)">
+                                </div>
+                                <span class="swatch-label">Secundária (Vermelho)</span>
+                                <span class="swatch-hex" id="hex-orcamentos-secondary">#E30613</span>
+                            </div>
+                            <div class="color-swatch-item">
+                                <div class="swatch-circle" style="background:#F0F4F8;border:1px solid #444" title="Clique para editar">
+                                    <input type="color" value="#F0F4F8" id="color-orcamentos-bg"
+                                           oninput="onColorChange('orcamentos','bg',this.value)">
+                                </div>
+                                <span class="swatch-label">Fundo destaque</span>
+                                <span class="swatch-hex" id="hex-orcamentos-bg">#F0F4F8</span>
+                            </div>
+                            <div class="color-swatch-item">
+                                <div class="swatch-circle" style="background:#333333" title="Clique para editar">
+                                    <input type="color" value="#333333" id="color-orcamentos-text"
+                                           oninput="onColorChange('orcamentos','text',this.value)">
+                                </div>
+                                <span class="swatch-label">Texto</span>
+                                <span class="swatch-hex" id="hex-orcamentos-text">#333333</span>
+                            </div>
+                        </div>
+
+                        <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:1rem;">
+                            Clique em qualquer cor para editar. Após ajustar, copie o CSS atualizado e substitua o arquivo
+                            <code>templates/orcamento.css</code>.
+                        </p>
+
+                        <div style="display:flex;gap:0.8rem;flex-wrap:wrap;">
+                            <button class="btn-brand" onclick="toggleCSSPreview('orcamentos')">
+                                📋 Ver CSS atualizado
+                            </button>
+                            <button class="btn-brand btn-brand-primary" onclick="copyCSSToClipboard('orcamentos')">
+                                ⎘ Copiar CSS
+                            </button>
+                        </div>
+
+                        <pre class="css-preview-block" id="css-preview-orcamentos"></pre>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid" style="margin-top: 2rem;">
+                <div class="card">
+                    <h3>📁 orcamentos/clientes/</h3>
+                    <p>Pastas por cliente em kebab-case. Cada orçamento é um arquivo Markdown no padrão <code>YYYY-MM-DD-orcamento-descrição.md</code>.</p>
+                </div>
+                <div class="card">
+                    <h3>📁 assets/</h3>
+                    <p>Logo e elementos visuais da Carvalhaes Comercial para uso nos PDFs gerados.</p>
+                </div>
+                <div class="card">
+                    <h3>📁 templates/</h3>
+                    <p>Modelo de orçamento (<code>orcamento.css</code>) com as cores da marca e fonte Outfit.</p>
+                </div>
+                <div class="card">
+                    <h3>📁 scripts/</h3>
+                    <p>Script de exportação: <code>gerar_orcamento.py</code>. Anexa automaticamente todas as imagens da pasta do cliente ao PDF.</p>
+                </div>
+            </div>
+
+            <div class="section-title" style="margin-top: 3rem;">Regras de Negócio</div>
+            <div class="card card-full" style="margin-top: 1rem;">
+                <ul class="step-list">
+                    <li>
+                        <span class="step-num">1</span>
+                        <div>
+                            <strong style="color: var(--text-primary);">Dados da Empresa</strong><br>
+                            Todos os dados oficiais (CNPJ, Endereço, Contato) estão centralizados em <code>dados_empresa.json</code> na raiz. Nunca hardcode esses dados.
+                        </div>
+                    </li>
+                    <li>
+                        <span class="step-num">2</span>
+                        <div>
+                            <strong style="color: var(--text-primary);">Imagens Comprobatórias</strong><br>
+                            Salve imagens na pasta do cliente específico. O script de PDF as anexa automaticamente ao final do documento.
+                        </div>
+                    </li>
+                    <li>
+                        <span class="step-num">3</span>
+                        <div>
+                            <strong style="color: var(--text-primary);">Padrão de Nomenclatura</strong><br>
+                            Clientes: <code>nome-do-cliente</code> (kebab-case) &nbsp;|&nbsp; Arquivos: <code>YYYY-MM-DD-orcamento-descrição.md</code>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="section-title" style="margin-top: 3rem;">Gerar PDF</div>
+            <div class="card card-full" style="margin-top: 1rem;">
+                <div class="code-block">
+                    <span class="cmd-line">source .venv/bin/activate</span><br>
+                    <span class="cmd-line">python scripts/gerar_orcamento.py orcamentos/clientes/nome-do-cliente/2026-04-21-orcamento-servico.md</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ======================== NORMAS ======================== -->
+        <section id="normas" class="page">
+            <header>
+                <h1>📚 Biblioteca de Normas CEMIG</h1>
+                <p class="subtitle">Índice completo das normas técnicas disponíveis para validação com Ollama.</p>
+            </header>
+            <div class="card card-full" style="overflow-x: auto;">
+                <!-- NORMS_START -->
+<h1>Índice de Normas CEMIG</h1>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Arquivo PDF</th>
+<th style="text-align: left;">Arquivo Texto</th>
+<th style="text-align: left;">Link Oficial</th>
+<th style="text-align: center;">Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">ATENDIMENTO-A-EDIFICACOES-COLETIVAS-COM-EQUIPAMENTOS-EM-PEDESTAL.pdf</td>
+<td style="text-align: left;">ATENDIMENTO-A-EDIFICACOES-COLETIVAS-COM-EQUIPAMENTOS-EM-PEDESTAL_texto.md</td>
+<td style="text-align: left;"><a href="https://www.cemig.com.br/wp-content/uploads/2025/10/ATENDIMENTO-A-EDIFICACOES-COLETIVAS-COM-EQUIPAMENTOS-EM-PEDESTAL.pdf">Baixar</a></td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;">CARTILHA-MODELO-PROJETO-GD.pdf</td>
+<td style="text-align: left;">CARTILHA-MODELO-PROJETO-GD_texto.md</td>
+<td style="text-align: left;"><a href="https://www.cemig.com.br/wp-content/uploads/2025/10/CARTILHA-MODELO-PROJETO-GD.pdf">Baixar</a></td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;">Cartilha-Tecnica-–-Modelo-de-estudo-de-coordenograma-para-solicitacao-de-injecao-de-potencia-MT-–-Geracao-Distribuida-rev2-1.pdf</td>
+<td style="text-align: left;">Cartilha-Tecnica-–-Modelo-de-estudo-de-coordenograma-para-solicitacao-de-injecao-de-potencia-MT-–-Geracao-Distribuida-rev2-1_texto.md</td>
+<td style="text-align: left;"><a href="https://www.cemig.com.br/wp-content/uploads/2025/10/Cartilha-Tecnica-–-Modelo-de-estudo-de-coordenograma-para-solicitacao-de-injecao-de-potencia-MT-–-Geracao-Distribuida-rev2-1.pdf">Baixar</a></td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;">ED-5-57-Caracterizacao-de-cargas-potencialmente-perturbadoras.pdf</td>
+<td style="text-align: left;">ED-5-57-Caracterizacao-de-cargas-potencialmente-perturbadoras_texto.md</td>
+<td style="text-align: left;"><a href="https://www.cemig.com.br/wp-content/uploads/2025/10/ED-5-57-Caracterizacao-de-cargas-potencialmente-perturbadoras.pdf">Baixar</a></td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;">ED-5-58_Criterios-Para-Conexao-de-Cargas-Potencialmente-Perturbadoras.pdf</td>
+<td style="text-align: left;">ED-5-58_Criterios-Para-Conexao-de-Cargas-Potencialmente-Perturbadoras_texto.md</td>
+<td style="text-align: left;"><a href="https://www.cemig.com.br/wp-content/uploads/2025/10/ED-5-58_Criterios-Para-Conexao-de-Cargas-Potencialmente-Perturbadoras.pdf">Baixar</a></td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;">Manual-Cemig-SMF_REV.pdf</td>
+<td style="text-align: left;">Manual-Cemig-SMF_REV_texto.md</td>
+<td style="text-align: left;"><a href="https://www.cemig.com.br/wp-content/uploads/2025/10/Manual-Cemig-SMF_REV.pdf">Baixar</a></td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;">ND_5.30_Conexao-em-BT.pdf</td>
+<td style="text-align: left;">ND_5.30_Conexao-em-BT_texto.md</td>
+<td style="text-align: left;"><a href="https://www.cemig.com.br/wp-content/uploads/2025/10/ND_5.30_Conexao-em-BT.pdf">Baixar</a></td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;">ND_5.31_Conexao-em-MT-.pdf</td>
+<td style="text-align: left;">ND_5.31_Conexao-em-MT-_texto.md</td>
+<td style="text-align: left;"><a href="https://www.cemig.com.br/wp-content/uploads/2025/10/ND_5.31_Conexao-em-MT-.pdf">Baixar</a></td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;">Sistema-APR-Web-Manual-do-Usuario.pdf</td>
+<td style="text-align: left;">Sistema-APR-Web-Manual-do-Usuario_texto.md</td>
+<td style="text-align: left;"><a href="https://www.cemig.com.br/wp-content/uploads/2025/10/Sistema-APR-Web-Manual-do-Usuario.pdf">Baixar</a></td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;">Sistema-PARTWeb-Manual-do-Usuario.pdf</td>
+<td style="text-align: left;">Sistema-PARTWeb-Manual-do-Usuario_texto.md</td>
+<td style="text-align: left;"><a href="https://www.cemig.com.br/wp-content/uploads/2025/10/Sistema-PARTWeb-Manual-do-Usuario.pdf">Baixar</a></td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;">ades_122_00001p_rthp_poste_concreto.pdf</td>
+<td style="text-align: left;">ades_122_00001p_rthp_poste_concreto_texto.md</td>
+<td style="text-align: left;"><a href="https://www.cemig.com.br/wp-content/uploads/2025/10/ades_122_00001p_rthp_poste_concreto.pdf">Baixar</a></td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;">ades_40_et_se_blindada.pdf</td>
+<td style="text-align: left;">ades_40_et_se_blindada_texto.md</td>
+<td style="text-align: left;"><a href="https://www.cemig.com.br/wp-content/uploads/2025/10/ades_40_et_se_blindada.pdf">Baixar</a></td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;">ades_41_rthp_se_blindada.pdf</td>
+<td style="text-align: left;">ades_41_rthp_se_blindada_texto.md</td>
+<td style="text-align: left;"><a href="https://www.cemig.com.br/wp-content/uploads/2025/10/ades_41_rthp_se_blindada.pdf">Baixar</a></td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;">ades_94_00001p_rthp_poste_aco.pdf</td>
+<td style="text-align: left;">ades_94_00001p_rthp_poste_aco_texto.md</td>
+<td style="text-align: left;"><a href="https://www.cemig.com.br/wp-content/uploads/2025/10/ades_94_00001p_rthp_poste_aco.pdf">Baixar</a></td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;">ades_95_00001p_rthp_haste.pdf</td>
+<td style="text-align: left;">ades_95_00001p_rthp_haste_texto.md</td>
+<td style="text-align: left;"><a href="https://www.cemig.com.br/wp-content/uploads/2025/10/ades_95_00001p_rthp_haste.pdf">Baixar</a></td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;">eaea_12254.pdf</td>
+<td style="text-align: left;">eaea_12254_texto.md</td>
+<td style="text-align: left;"><a href="https://www.cemig.com.br/wp-content/uploads/2025/10/eaea_12254.pdf">Baixar</a></td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;">nd5_1.pdf</td>
+<td style="text-align: left;">nd5_1_texto.md</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;">nd5_2_000001p.docx.pdf</td>
+<td style="text-align: left;">nd5_2_000001p.docx_texto.md</td>
+<td style="text-align: left;"><a href="https://www.cemig.com.br/wp-content/uploads/2025/10/nd5_2_000001p.docx.pdf">Baixar</a></td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;">nd5_3_000001p.pdf</td>
+<td style="text-align: left;">nd5_3_000001p_texto.md</td>
+<td style="text-align: left;"><a href="https://www.cemig.com.br/wp-content/uploads/2025/10/nd5_3_000001p.pdf">Baixar</a></td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;">nd5_5_000001p.pdf</td>
+<td style="text-align: left;">nd5_5_000001p_texto.md</td>
+<td style="text-align: left;"><a href="https://www.cemig.com.br/wp-content/uploads/2025/10/nd5_5_000001p.pdf">Baixar</a></td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;">nd_3_5_projetos-rds-condominiosp.pdf</td>
+<td style="text-align: left;">nd_3_5_projetos-rds-condominiosp_texto.md</td>
+<td style="text-align: left;"><a href="https://www.cemig.com.br/wp-content/uploads/2025/10/nd_3_5_projetos-rds-condominiosp.pdf">Baixar</a></td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;">paea_33_00001p_rthp_disj_bt.pdf</td>
+<td style="text-align: left;">paea_33_00001p_rthp_disj_bt_texto.md</td>
+<td style="text-align: left;"><a href="https://www.cemig.com.br/wp-content/uploads/2025/10/paea_33_00001p_rthp_disj_bt.pdf">Baixar</a></td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;">pec-11-norma-conexao.pdf</td>
+<td style="text-align: left;">pec-11-norma-conexao_texto.md</td>
+<td style="text-align: left;"><a href="https://www.cemig.com.br/wp-content/uploads/2025/11/pec-11-norma-conexao.pdf">Baixar</a></td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;">peea_21_00001p_rthp_ppf.pdf</td>
+<td style="text-align: left;">peea_21_00001p_rthp_ppf_texto.md</td>
+<td style="text-align: left;"><a href="https://www.cemig.com.br/wp-content/uploads/2025/10/peea_21_00001p_rthp_ppf.pdf">Baixar</a></td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;">peea_24_00001p.pdf</td>
+<td style="text-align: left;">peea_24_00001p_texto.md</td>
+<td style="text-align: left;"><a href="https://www.cemig.com.br/wp-content/uploads/2025/10/peea_24_00001p.pdf">Baixar</a></td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;">peea_25_00001p_rthp_caixa_policarbonato.pdf</td>
+<td style="text-align: left;">peea_25_00001p_rthp_caixa_policarbonato_texto.md</td>
+<td style="text-align: left;"><a href="https://www.cemig.com.br/wp-content/uploads/2025/10/peea_25_00001p_rthp_caixa_policarbonato.pdf">Baixar</a></td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;">peea_6_00001p_c.pdf</td>
+<td style="text-align: left;">peea_6_00001p_c_texto.md</td>
+<td style="text-align: left;"><a href="https://www.cemig.com.br/wp-content/uploads/2025/10/peea_6_00001p_c.pdf">Baixar</a></td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;">peea_7_00001p_b.pdf</td>
+<td style="text-align: left;">peea_7_00001p_b_texto.md</td>
+<td style="text-align: left;"><a href="https://www.cemig.com.br/wp-content/uploads/2025/10/peea_7_00001p_b.pdf">Baixar</a></td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;">peea_8b_00001p.pdf</td>
+<td style="text-align: left;">peea_8b_00001p_texto.md</td>
+<td style="text-align: left;"><a href="https://www.cemig.com.br/wp-content/uploads/2025/10/peea_8b_00001p.pdf">Baixar</a></td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;">peea_9_00001p_et_disj_bt.pdf</td>
+<td style="text-align: left;">peea_9_00001p_et_disj_bt_texto.md</td>
+<td style="text-align: left;"><a href="https://www.cemig.com.br/wp-content/uploads/2025/10/peea_9_00001p_et_disj_bt.pdf">Baixar</a></td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;">ren20211000.pdf</td>
+<td style="text-align: left;">ren20211000_texto.md</td>
+<td style="text-align: left;">-</td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;">tdat_9_000001p_et_alicate_amp.pdf</td>
+<td style="text-align: left;">tdat_9_000001p_et_alicate_amp_texto.md</td>
+<td style="text-align: left;"><a href="https://www.cemig.com.br/wp-content/uploads/2025/10/tdat_9_000001p_et_alicate_amp.pdf">Baixar</a></td>
+<td style="text-align: center;">✅</td>
+</tr>
+</tbody>
+</table>
+                <!-- NORMS_END -->
+            </div>
+        </section>
+
+        <footer>
+            <p>Antigravity Docs Hub v2.0 | Atualizado em 21/04/2026</p>
+        </footer>
+    </main>
+
+    <script>
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            const target = document.getElementById(pageId);
+            if (target) {
+                target.classList.add('active');
+                window.scrollTo(0, 0);
+            }
+            document.querySelectorAll('.nav-item').forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === '#' + pageId) link.classList.add('active');
+            });
+            history.pushState(null, '', '#' + pageId);
+        }
+
+        document.querySelectorAll('.nav-item').forEach(link => {
+            link.addEventListener('click', e => {
+                e.preventDefault();
+                showPage(link.getAttribute('href').substring(1));
+            });
+        });
+
+        document.querySelectorAll('.repo-card').forEach(card => {
+            card.addEventListener('click', () => showPage(card.getAttribute('data-target')));
+        });
+
+        window.addEventListener('load', () => {
+            const hash = window.location.hash.substring(1);
+            if (hash) showPage(hash);
+        });
+
+        window.addEventListener('popstate', () => {
+            const hash = window.location.hash.substring(1);
+            showPage(hash || 'dashboard');
+        });
+
+        // ── Toast ──────────────────────────────────────────────────────
+        const toastContainer = document.createElement('div');
+        toastContainer.className = 'toast-container';
+        document.body.appendChild(toastContainer);
+
+        function showToast(msg, type = 'success') {
+            const t = document.createElement('div');
+            t.className = `toast toast-${type}`;
+            t.textContent = msg;
+            toastContainer.appendChild(t);
+            setTimeout(() => t.remove(), 3500);
+        }
+
+        // ── Brand: pending logo files per project ──────────────────────
+        const pendingLogos = {};
+
+        // ── Brand: color state ─────────────────────────────────────────
+        const brandColors = {
+            contracts: { primary: '#CC1417', accent: '#F5A623', bg: '#FFF5F5', text: '#222222' },
+            orcamentos: { primary: '#0054A6', secondary: '#E30613', bg: '#F0F4F8', text: '#333333' }
+        };
+
+        function onColorChange(project, key, value) {
+            brandColors[project][key] = value;
+            // update swatch circle background
+            const input = document.getElementById(`color-${project}-${key}`);
+            if (input) input.parentElement.style.background = value;
+            // update hex label
+            const hexEl = document.getElementById(`hex-${project}-${key}`);
+            if (hexEl) hexEl.textContent = value.toUpperCase();
+            // refresh CSS preview if visible
+            const preview = document.getElementById(`css-preview-${project}`);
+            if (preview && preview.classList.contains('visible')) {
+                preview.textContent = generateCSS(project);
+            }
+        }
+
+        // ── CSS generators ─────────────────────────────────────────────
+        function generateCSS(project) {
+            const c = brandColors[project];
+            if (project === 'contracts') {
+                return `/* PA Construshop — Estilo para contratos em PDF */
+/* Cores da marca: Vermelho ${c.primary} | Destaque ${c.accent} */
+
+h1, h2 { color: ${c.primary}; }
+blockquote {
+  border-left: 3px solid ${c.primary};
+  background-color: ${c.bg};
+}
+thead tr { background-color: ${c.primary}; color: white; }
+pre { border-left: 3px solid ${c.primary}; }
+strong { color: ${c.text}; }
+body { color: ${c.text}; }`;
+            }
+            if (project === 'orcamentos') {
+                return `/* Carvalhaes Comercial — Estilo para Orçamentos em PDF */
+/* Cores da marca: Azul ${c.primary} | Vermelho ${c.secondary} */
+
+h1 {
+  color: ${c.primary};
+  border-bottom: 2px solid ${c.primary};
+}
+h2 {
+  color: ${c.primary};
+  border-left: 4px solid ${c.primary};
+  background-color: ${c.bg};
+}
+h3 { color: ${c.primary}; }
+body { color: ${c.text}; }
+thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
+            }
+        }
+
+        function toggleCSSPreview(project) {
+            const el = document.getElementById(`css-preview-${project}`);
+            if (el.classList.contains('visible')) {
+                el.classList.remove('visible');
+            } else {
+                el.textContent = generateCSS(project);
+                el.classList.add('visible');
+            }
+        }
+
+        function copyCSSToClipboard(project) {
+            const css = generateCSS(project);
+            navigator.clipboard.writeText(css).then(() => {
+                showToast('CSS copiado para o clipboard!');
+            }).catch(() => {
+                showToast('Erro ao copiar — tente o botão "Ver CSS" e copie manualmente.', 'error');
+            });
+        }
+
+        // ── Logo: drag-and-drop handlers ───────────────────────────────
+        function handleDragOver(e, zoneId) {
+            e.preventDefault();
+            document.getElementById(zoneId).classList.add('drag-over');
+        }
+        function handleDragLeave(zoneId) {
+            document.getElementById(zoneId).classList.remove('drag-over');
+        }
+        function handleDrop(e, project) {
+            e.preventDefault();
+            const zoneId = `drop-${project}`;
+            document.getElementById(zoneId).classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) applyLogoFile(project, file);
+        }
+
+        function handleLogoSelect(e, project) {
+            const file = e.target.files[0];
+            if (file) applyLogoFile(project, file);
+        }
+
+        function applyLogoFile(project, file) {
+            pendingLogos[project] = file;
+            const img = document.getElementById(`logo-preview-${project}`);
+            const noImg = img.nextElementSibling;
+            const url = URL.createObjectURL(file);
+            img.src = url;
+            img.style.display = '';
+            if (noImg) noImg.style.display = 'none';
+            document.getElementById(`save-btn-${project}`).disabled = false;
+            showToast(`Logo carregada: ${file.name}`, 'info');
+        }
+
+        // ── Logo: save via File System Access API ──────────────────────
+        const logoFileNames = {
+            contracts:  'logo.png',
+            orcamentos: 'logo_carvalhaes_comercial.png'
+        };
+
+        async function saveLogo(project) {
+            const file = pendingLogos[project];
+            if (!file) return;
+
+            if (!('showDirectoryPicker' in window)) {
+                showToast('File System API não suportada. Use Chrome ou Edge.', 'error');
+                return;
+            }
+
+            try {
+                showToast('Selecione a pasta assets/ do projeto…', 'info');
+                const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+                const targetName = logoFileNames[project];
+                const fileHandle = await dirHandle.getFileHandle(targetName, { create: true });
+                const writable = await fileHandle.createWritable();
+                await writable.write(file);
+                await writable.close();
+                showToast(`✅ ${targetName} salva com sucesso!`);
+                document.getElementById(`save-btn-${project}`).disabled = true;
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    showToast('Erro ao salvar: ' + err.message, 'error');
+                }
+            }
+        }
+    </script>
+</body>
+</html>

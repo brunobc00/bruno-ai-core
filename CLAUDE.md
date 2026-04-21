@@ -28,3 +28,17 @@ Antes de iniciar qualquer tarefa, o Antigravity deve apresentar um quadro de est
 ## Configurações de Modelos
 - Chat: `llama3.1:8b`
 - Embeddings: `nomic-embed-text`
+
+## Git e Atualização do Hub
+
+Após qualquer alteração neste repositório (scripts, docs, hub):
+
+```bash
+git add . && git commit -m "<tipo>: <descrição>" && git push origin main
+```
+
+Quando arquivos `.md` de instrução forem alterados no workspace, executar `update_hub.py` para refletir no hub antes do commit:
+
+```bash
+python3 update_hub.py
+```
