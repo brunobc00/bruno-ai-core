@@ -1654,17 +1654,38 @@ git add . &amp;&amp; git commit -m &quot;&lt;tipo&gt;: &lt;descrição&gt;&quot;
                         <span class="label">Total Geral</span>
                         <span class="value" id="orc-total-value">—</span>
                     </div>
+                    <!-- Client info row -->
                     <div style="margin-top:1.2rem;display:flex;gap:0.6rem;flex-wrap:wrap;align-items:flex-end;">
-                        <div style="flex:1;min-width:200px;">
-                            <label style="font-size:0.78rem;color:#666;display:block;margin-bottom:0.3rem;">Nome do Cliente</label>
+                        <div style="flex:2;min-width:200px;">
+                            <label style="font-size:0.78rem;color:#666;display:block;margin-bottom:0.3rem;">Nome do Cliente *</label>
                             <input class="orc-input" id="orc-client-name" type="text" placeholder="Ex: Condomínio Edifício Ozanam" style="margin-bottom:0;">
                         </div>
                         <div style="flex:1;min-width:160px;">
                             <label style="font-size:0.78rem;color:#666;display:block;margin-bottom:0.3rem;">CNPJ (opcional)</label>
                             <input class="orc-input" id="orc-client-cnpj" type="text" placeholder="00.000.000/0001-00" style="margin-bottom:0;">
                         </div>
+                        <div style="flex:1;min-width:130px;">
+                            <label style="font-size:0.78rem;color:#666;display:block;margin-bottom:0.3rem;">Validade (opcional)</label>
+                            <input class="orc-input" id="orc-validade" type="text" placeholder="DD/MM/AAAA" style="margin-bottom:0;">
+                        </div>
                     </div>
-                    <div style="margin-top:1rem;display:flex;gap:0.6rem;flex-wrap:wrap;">
+
+                    <!-- Observations -->
+                    <div style="margin-top:1rem;">
+                        <label style="font-size:0.78rem;color:#666;display:block;margin-bottom:0.3rem;">Observações do Projeto (opcional)</label>
+                        <textarea class="orc-input" id="orc-observacoes" rows="3" placeholder="Ex: Itens especificados em conformidade com o projeto arquitetônico. Pendente de definição o pendente do coworking." style="margin-bottom:0;resize:vertical;font-family:inherit;"></textarea>
+                    </div>
+
+                    <!-- Payment conditions -->
+                    <div id="orc-pagamento-wrap" style="margin-top:1.2rem;display:none;">
+                        <div style="font-size:0.78rem;color:#666;margin-bottom:0.5rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">
+                            Condições de Pagamento
+                            <span style="font-weight:400;color:#444;text-transform:none;letter-spacing:0;margin-left:0.5rem;">(extraídas da planilha — editável)</span>
+                        </div>
+                        <div id="orc-pagamento-rows" style="display:flex;flex-direction:column;gap:0.4rem;"></div>
+                    </div>
+
+                    <div style="margin-top:1.2rem;display:flex;gap:0.6rem;flex-wrap:wrap;">
                         <button class="report-btn report-btn-secondary" onclick="orcReset()">← Voltar</button>
                         <button class="report-btn" id="orc-btn-gerar" onclick="orcGerarPDF()">Gerar PDF →</button>
                     </div>
@@ -2290,11 +2311,44 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
                 tbody.appendChild(tr);
             }
             document.getElementById('orc-total-value').textContent = fmtBRL(data.total);
+
+            // Render editable payment rows
+            const pagWrap = document.getElementById('orc-pagamento-wrap');
+            const pagRows = document.getElementById('orc-pagamento-rows');
+            pagRows.innerHTML = '';
+            if (data.pagamento && data.pagamento.length > 0) {
+                const labels = ['Entrada', ...data.pagamento.slice(1).map((_, i) => `${i+1}ª Parcela`)];
+                data.pagamento.forEach((p, i) => {
+                    const row = document.createElement('div');
+                    row.style.cssText = 'display:flex;gap:0.5rem;align-items:center;';
+                    row.innerHTML = `
+                        <span style="min-width:110px;font-size:0.82rem;color:#888;">${labels[i]}</span>
+                        <span style="min-width:80px;font-size:0.82rem;color:#555;">${p.prazo}</span>
+                        <input class="orc-input" data-pag-idx="${i}" data-pag-field="valor" type="number"
+                            step="0.01" value="${p.valor}" style="width:140px;margin-bottom:0;font-size:0.82rem;">`;
+                    pagRows.appendChild(row);
+                });
+                pagWrap.style.display = 'block';
+            } else {
+                pagWrap.style.display = 'none';
+            }
+        }
+
+        function orcGetPagamento() {
+            const inputs = document.querySelectorAll('#orc-pagamento-rows input[data-pag-idx]');
+            if (!inputs.length || !_orcPivotData.pagamento) return _orcPivotData.pagamento || [];
+            const prazoLabels = _orcPivotData.pagamento.map(p => p.prazo);
+            return Array.from(inputs).map((inp, i) => ({
+                prazo: prazoLabels[i],
+                valor: parseFloat(inp.value) || 0,
+            })).filter(p => p.valor > 0);
         }
 
         async function orcGerarPDF() {
-            const name = document.getElementById('orc-client-name').value.trim();
-            const cnpj = document.getElementById('orc-client-cnpj').value.trim();
+            const name  = document.getElementById('orc-client-name').value.trim();
+            const cnpj  = document.getElementById('orc-client-cnpj').value.trim();
+            const valid = document.getElementById('orc-validade').value.trim();
+            const obs   = document.getElementById('orc-observacoes').value.trim();
             const errEl = document.getElementById('orc-step2-error');
             const btn   = document.getElementById('orc-btn-gerar');
             errEl.style.display = 'none';
@@ -2307,10 +2361,13 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        items: _orcPivotData.items,
-                        total: _orcPivotData.total,
-                        client_name: name,
-                        client_cnpj: cnpj,
+                        items:        _orcPivotData.items,
+                        total:        _orcPivotData.total,
+                        client_name:  name,
+                        client_cnpj:  cnpj,
+                        validade:     valid,
+                        observacoes:  obs,
+                        pagamento:    orcGetPagamento(),
                     }),
                 });
                 const data = await r.json();
@@ -2340,6 +2397,10 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
             document.getElementById('orc-sheet-url').value = '';
             document.getElementById('orc-client-name').value = '';
             document.getElementById('orc-client-cnpj').value = '';
+            document.getElementById('orc-validade').value = '';
+            document.getElementById('orc-observacoes').value = '';
+            document.getElementById('orc-pagamento-rows').innerHTML = '';
+            document.getElementById('orc-pagamento-wrap').style.display = 'none';
             document.getElementById('orc-step1-error').style.display = 'none';
             document.getElementById('orc-step2-error').style.display = 'none';
             document.getElementById('orc-step-1').classList.remove('done');

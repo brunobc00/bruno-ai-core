@@ -456,6 +456,11 @@ async def sheets_processar(body: SheetsRequest, request: Request):
     col_vunit = find_col(["valor unit c desconto", "valor unitario c desc", "valor unit. c/desc"], 19)
     col_vtot  = find_col(["valor total c/desc", "valor total c desc"], 20)
 
+    # Payment columns: ENT(29), 30d(30), 60d(31), 90d(32), 120d(33), 150d(34), 180d(35), 210d(36)
+    PAYMENT_LABELS = ["À Vista", "30 Dias", "60 Dias", "90 Dias", "120 Dias", "150 Dias", "180 Dias", "210 Dias"]
+    PAYMENT_COLS   = [29, 30, 31, 32, 33, 34, 35, 36]
+    payment_sums   = [0.0] * len(PAYMENT_COLS)
+
     pivot: dict = OrderedDict()
     for row in rows[1:]:
         def cell(i: int) -> str:
@@ -482,8 +487,33 @@ async def sheets_processar(body: SheetsRequest, request: Request):
         pivot[key]["qtd"]    += qtd
         pivot[key]["vtotal"] += vtot
 
+        for i, col_idx in enumerate(PAYMENT_COLS):
+            payment_sums[i] += _parse_brl(cell(col_idx))
+
     items = list(pivot.values())
-    return {"items": items, "total": sum(i["vtotal"] for i in items)}
+    total = sum(i["vtotal"] for i in items)
+
+    pagamento = [
+        {"prazo": label, "valor": round(v, 2)}
+        for label, v in zip(PAYMENT_LABELS, payment_sums)
+        if v > 0
+    ]
+
+    return {"items": items, "total": total, "pagamento": pagamento}
+
+
+_NOTAS_TECNICAS = """\
+## 🔍 Notas Técnicas e Observações
+
+1.  **Tecnologia de LED Integrado e Manutenção:** Todos os spots, balizadores e embutidos de solo especificados utilizam tecnologia de **LED Integrado**. Nestes itens, o **driver (fonte) não é integrado**, o que garante extrema facilidade em eventuais manutenções futuras, permitindo a substituição apenas do driver sem necessidade de trocar a peça inteira.
+2.  **Conformidade NBR 5410 (Segurança):** Para as áreas molhadas, o sistema utiliza alimentação de **Extra Baixa Tensão**, prevenindo riscos de choque elétrico conforme exigência de segurança.
+3.  **Sistemas Completos:** O orçamento contempla o fornecimento de todos os drivers e fontes de alimentação necessários para o funcionamento dos perfis de LED e sistemas de extra baixa tensão.
+4.  **Adequação de Fachos:** Todos os spots fornecidos terão os fachos de luz adequados ao seu ambiente específico, garantindo conforto visual e o efeito arquitetônico planejado.
+5.  **Garantia de Fábrica:**
+    *   **5 Anos de Garantia:** Toda a linha de Jardim (balizadores, espetos, embutidos de solo) e todos os Spots de LED.
+    *   **2 Anos de Garantia:** Linha de Arandelas e Lâmpadas LED.
+6.  **Conformidade com Projeto:** Todos os itens foram selecionados para estarem em conformidade com o projeto apresentado.
+"""
 
 
 class OrcamentoRequest(BaseModel):
@@ -491,6 +521,9 @@ class OrcamentoRequest(BaseModel):
     total: float
     client_name: str
     client_cnpj: str = ""
+    validade: str = ""       # ex: "28/04/2026"
+    observacoes: str = ""    # texto livre para a seção Descrição do Projeto
+    pagamento: list[dict] = []  # [{prazo, valor}]
 
 
 @app.post("/api/orcamento/gerar-pdf")
@@ -510,19 +543,58 @@ async def gerar_pdf_api(body: OrcamentoRequest, request: Request):
         )
     table_rows += f"| **TOTAL GERAL** | | | | **{_fmt_brl(body.total)}** |\n"
 
+    # Payment conditions section
+    pagamento_md = ""
+    if body.pagamento:
+        parcela_num = ["Entrada"] + [f"{i}ª Parcela" for i in range(1, len(body.pagamento))]
+        rows_pag = ""
+        for label, p in zip(parcela_num, body.pagamento):
+            rows_pag += f"| {label} | {p['prazo']} | {_fmt_brl(p['valor'])} |\n"
+        pagamento_md = f"""\
+## 💳 Condições de Pagamento
+
+| Parcela | Prazo | Valor |
+| :--- | :--- | :--- |
+{rows_pag}
+---
+
+"""
+
+    # Optional project description
+    descricao_md = ""
+    if body.observacoes.strip():
+        descricao_md = f"""\
+## 📝 Descrição do Projeto
+
+{body.observacoes.strip()}
+
+---
+
+"""
+
+    validade_line = f"**VALIDADE:** {body.validade}\n" if body.validade else ""
+
     md_content = f"""# ORÇAMENTO DE ILUMINAÇÃO - {body.client_name.upper()}
 
 **CLIENTE:** {body.client_name.upper()}
 **CNPJ:** {body.client_cnpj}
 **DATA:** {today}
-
+{validade_line}
 ---
 
-## 📦 Itens do Orçamento
+{descricao_md}## 📦 Itens do Orçamento
 
 | Ambiente | Grupo | Qtd | Valor Unit. | Total |
 | :--- | :--- | :---: | :--- | :--- |
 {table_rows}
+---
+
+{pagamento_md}{_NOTAS_TECNICAS}
+
+---
+
+## 🖋️ Confirmação de Pedido
+Confirmo os valores, condições de pagamentos e quantidades dos produtos acima relacionados.
 """
 
     tmp_dir = Path(tempfile.mkdtemp(prefix="orcamento_"))
