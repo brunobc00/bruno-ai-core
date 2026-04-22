@@ -80,9 +80,6 @@ def _git_pending(since: str, until: str) -> dict:
     for d in sorted(WORKSPACE.iterdir()):
         if not (d / ".git").exists():
             continue
-        # Atualiza refs remotas silenciosamente
-        subprocess.run(["git", "-C", str(d), "fetch", "--quiet"],
-                       capture_output=True)
         main = _main_branch(str(d))
 
         branches_r = subprocess.run(
@@ -323,6 +320,16 @@ async def chat_endpoint(request: ChatRequest):
 
 
 # ── Static (must be last) ─────────────────────────────────────────────────────
+
+# Serve logo assets de projetos fora do docs/hub
+_LOGO_DIRS = {
+    "br.com.paconstrushop.services.contracts": WORKSPACE / "br.com.paconstrushop.services.contracts" / "assets",
+    "carvalhaescomercial-orcamentos":           WORKSPACE / "carvalhaescomercial-orcamentos" / "assets",
+}
+for _route, _dir in _LOGO_DIRS.items():
+    if _dir.exists():
+        app.mount(f"/{_route}/assets", StaticFiles(directory=str(_dir)), name=_route)
+
 app.mount("/", StaticFiles(directory=DOCS_DIR, html=True), name="static")
 
 if __name__ == "__main__":
