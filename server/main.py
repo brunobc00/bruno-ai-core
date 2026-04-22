@@ -149,6 +149,38 @@ async def activity_report(
     }
 
 
+@app.get("/api/users")
+async def list_users():
+    """Retorna todos os autores Git (histórico completo) + assignees do Redmine."""
+    git_authors: set[str] = set()
+    for d in sorted(WORKSPACE.iterdir()):
+        if not (d / ".git").exists():
+            continue
+        result = subprocess.run(
+            ["git", "-C", str(d), "log", "--format=%an"],
+            capture_output=True, text=True
+        )
+        for name in result.stdout.strip().splitlines():
+            name = name.strip()
+            if name:
+                git_authors.add(name)
+
+    redmine_authors: set[str] = set()
+    try:
+        url = f"{REDMINE_URL}/issues.json?limit=100&status_id=*&assigned_to_id=*"
+        resp = httpx.get(url, headers={"X-Redmine-API-Key": REDMINE_KEY}, timeout=15)
+        if resp.is_success:
+            for i in resp.json().get("issues", []):
+                name = i.get("assigned_to", {}).get("name", "")
+                if name and name != "Sem responsável":
+                    redmine_authors.add(name)
+    except Exception:
+        pass
+
+    all_users = sorted(git_authors | redmine_authors)
+    return {"users": all_users}
+
+
 # ── Chat ──────────────────────────────────────────────────────────────────────
 
 class ChatRequest(BaseModel):

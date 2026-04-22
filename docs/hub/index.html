@@ -1518,10 +1518,16 @@ git add . &amp;&amp; git commit -m &quot;&lt;tipo&gt;: &lt;descrição&gt;&quot;
             history.pushState(null, '', '#' + pageId);
         }
 
+        let _usersLoaded = false;
         document.querySelectorAll('.nav-item').forEach(link => {
             link.addEventListener('click', e => {
                 e.preventDefault();
-                showPage(link.getAttribute('href').substring(1));
+                const pageId = link.getAttribute('href').substring(1);
+                showPage(pageId);
+                if (pageId === 'relatorio' && !_usersLoaded) {
+                    _usersLoaded = true;
+                    loadAllUsers();
+                }
             });
         });
 
@@ -1532,6 +1538,10 @@ git add . &amp;&amp; git commit -m &quot;&lt;tipo&gt;: &lt;descrição&gt;&quot;
         window.addEventListener('load', () => {
             const hash = window.location.hash.substring(1);
             if (hash) showPage(hash);
+            if (hash === 'relatorio' && !_usersLoaded) {
+                _usersLoaded = true;
+                loadAllUsers();
+            }
         });
 
         window.addEventListener('popstate', () => {
@@ -1793,6 +1803,7 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
 
         // ── Activity Report ─────────────────────────────────────────────
         let _reportData = null;
+        let _allUsers   = [];
 
         (function initReportDates() {
             const today = new Date().toISOString().slice(0, 10);
@@ -1803,6 +1814,30 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
             if (sinceEl) sinceEl.value = yesterday.toISOString().slice(0, 10);
             if (untilEl) untilEl.value = today;
         })();
+
+        async function loadAllUsers() {
+            try {
+                const res = await fetch('/api/users');
+                if (!res.ok) return;
+                const data = await res.json();
+                _allUsers = data.users || [];
+                populateUserSelect(_allUsers, '');
+            } catch (_) {}
+        }
+
+        function populateUserSelect(users, selectedValue) {
+            const select = document.getElementById('report-person');
+            if (!select) return;
+            const prev = selectedValue || select.value;
+            select.innerHTML = '<option value="">Todos</option>';
+            users.forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.textContent = name;
+                if (name === prev) opt.selected = true;
+                select.appendChild(opt);
+            });
+        }
 
         function setQuick(daysBack) {
             const today = new Date();
@@ -1932,17 +1967,6 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
                 document.getElementById('kpi-issues').textContent  = data.total_issues;
                 document.getElementById('kpi-done').textContent    = data.resolved;
                 kpis.style.display = 'grid';
-
-                // Popula dropdown de pessoas
-                const currentFilter = select.value;
-                select.innerHTML = '<option value="">Todos</option>';
-                data.people.forEach(p => {
-                    const opt = document.createElement('option');
-                    opt.value = p.name;
-                    opt.textContent = p.name;
-                    if (p.name === currentFilter) opt.selected = true;
-                    select.appendChild(opt);
-                });
 
                 renderReport(data, select.value);
 
