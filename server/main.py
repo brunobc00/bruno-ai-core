@@ -1,14 +1,19 @@
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from datetime import date, timedelta
 from pathlib import Path
 import subprocess
 import httpx
 import os
+import re
+import uuid
+import sys
+import tempfile
+import urllib.parse
 
 from dotenv import load_dotenv
 load_dotenv("/home/bruno/Documentos/Github/.env")
@@ -27,6 +32,18 @@ DOCS_DIR     = os.path.abspath(os.path.join(os.path.dirname(__file__), "../docs/
 WORKSPACE    = Path("/home/bruno/Documentos/Github")
 REDMINE_URL  = os.getenv("REDMINE_URL")
 REDMINE_KEY  = os.getenv("REDMINE_API_KEY")
+
+GOOGLE_CLIENT_ID     = os.getenv("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
+GOOGLE_REDIRECT_URI  = "https://ia.automacaobbc.com/api/auth/google/callback"
+
+_sessions: dict = {}   # session_id → {email, name, access_token, refresh_token}
+_pdf_cache: dict = {}  # download_token → pdf_path
+
+
+def _get_session(request: Request) -> dict | None:
+    sid = request.cookies.get("session_id")
+    return _sessions.get(sid) if sid else None
 
 
 # ── Activity Report ───────────────────────────────────────────────────────────
@@ -280,7 +297,6 @@ async def chat_endpoint(request: ChatRequest):
             files_to_check.append("nd5_2_000001p.docx_texto.md")
 
         keywords = ["63a", "63", "disjuntor", "cabo", "bitola", "aterramento", "material"]
-        import re
         numbers = re.findall(r'\d+', msg_lower)
 
         found_keywords = [k for k in keywords if k in msg_lower] + numbers
@@ -317,6 +333,229 @@ async def chat_endpoint(request: ChatRequest):
             return res_json
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Google OAuth ─────────────────────────────────────────────────────────────
+
+@app.get("/api/auth/google")
+async def auth_google():
+    params = urllib.parse.urlencode({
+        "client_id":     GOOGLE_CLIENT_ID,
+        "redirect_uri":  GOOGLE_REDIRECT_URI,
+        "response_type": "code",
+        "scope":         "openid email profile https://www.googleapis.com/auth/spreadsheets.readonly",
+        "access_type":   "offline",
+        "prompt":        "consent",
+    })
+    return RedirectResponse(f"https://accounts.google.com/o/oauth2/auth?{params}")
+
+
+@app.get("/api/auth/google/callback")
+async def auth_google_callback(code: str):
+    async with httpx.AsyncClient(timeout=15) as client:
+        token_r = await client.post("https://oauth2.googleapis.com/token", data={
+            "code":          code,
+            "client_id":     GOOGLE_CLIENT_ID,
+            "client_secret": GOOGLE_CLIENT_SECRET,
+            "redirect_uri":  GOOGLE_REDIRECT_URI,
+            "grant_type":    "authorization_code",
+        })
+        token_r.raise_for_status()
+        tokens = token_r.json()
+
+        user_r = await client.get(
+            "https://www.googleapis.com/oauth2/v2/userinfo",
+            headers={"Authorization": f"Bearer {tokens['access_token']}"},
+        )
+        user = user_r.json()
+
+    sid = str(uuid.uuid4())
+    _sessions[sid] = {
+        "email":         user.get("email"),
+        "name":          user.get("name"),
+        "access_token":  tokens.get("access_token"),
+        "refresh_token": tokens.get("refresh_token"),
+    }
+    resp = RedirectResponse(url="/#orcamentos")
+    resp.set_cookie("session_id", sid, httponly=True, samesite="lax", max_age=86400 * 7)
+    return resp
+
+
+@app.get("/api/auth/me")
+async def auth_me(request: Request):
+    session = _get_session(request)
+    if not session:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return {"email": session["email"], "name": session["name"]}
+
+
+@app.get("/api/auth/logout")
+async def auth_logout(request: Request):
+    sid = request.cookies.get("session_id")
+    if sid:
+        _sessions.pop(sid, None)
+    resp = RedirectResponse(url="/")
+    resp.delete_cookie("session_id")
+    return resp
+
+
+# ── Google Sheets → Orçamento ────────────────────────────────────────────────
+
+class SheetsRequest(BaseModel):
+    url: str
+
+
+def _parse_brl(s: str) -> float:
+    s = s.replace("R$", "").replace(".", "").replace(",", ".").strip()
+    try:
+        return float(s)
+    except ValueError:
+        return 0.0
+
+
+def _fmt_brl(v: float) -> str:
+    return f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+@app.post("/api/sheets/processar")
+async def sheets_processar(body: SheetsRequest, request: Request):
+    session = _get_session(request)
+    if not session:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    m = re.search(r"/spreadsheets/d/([a-zA-Z0-9-_]+)", body.url)
+    if not m:
+        raise HTTPException(status_code=400, detail="URL inválida")
+    sid = m.group(1)
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.get(
+            f"https://sheets.googleapis.com/v4/spreadsheets/{sid}/values/A:AJ",
+            headers={"Authorization": f"Bearer {session['access_token']}"},
+        )
+        if resp.status_code == 401:
+            raise HTTPException(status_code=401, detail="Token expirado. Faça login novamente.")
+        resp.raise_for_status()
+
+    rows = resp.json().get("values", [])
+    if len(rows) < 2:
+        raise HTTPException(status_code=400, detail="Planilha vazia")
+
+    headers = rows[0]
+
+    def find_col(candidates: list[str], default: int) -> int:
+        for name in candidates:
+            for i, h in enumerate(headers):
+                if h.strip().lower() == name.lower():
+                    return i
+        return default
+
+    col_amb   = find_col(["AMBIENTE", "ambiente"], 2)
+    col_grp   = find_col(["GRUPO", "grupo"], 8)
+    col_qtd   = find_col(["Quantidade", "QTD", "quantidade"], 5)
+    col_vunit = find_col(["valor unit c desconto", "valor unitario c desc", "valor unit. c/desc"], 19)
+    col_vtot  = find_col(["valor total c/desc", "valor total c desc"], 20)
+
+    pivot: dict = OrderedDict()
+    for row in rows[1:]:
+        def cell(i: int) -> str:
+            return row[i].strip() if i < len(row) else ""
+
+        ambiente = cell(col_amb)
+        grupo    = cell(col_grp)
+        if not ambiente or not grupo:
+            continue
+
+        try:
+            qtd = int(cell(col_qtd).replace(",", "").split(".")[0])
+        except (ValueError, IndexError):
+            qtd = 0
+        if qtd <= 0:
+            continue
+
+        vunit = _parse_brl(cell(col_vunit))
+        vtot  = _parse_brl(cell(col_vtot))
+
+        key = (ambiente, grupo)
+        if key not in pivot:
+            pivot[key] = {"ambiente": ambiente, "grupo": grupo, "qtd": 0, "vunit": vunit, "vtotal": 0.0}
+        pivot[key]["qtd"]    += qtd
+        pivot[key]["vtotal"] += vtot
+
+    items = list(pivot.values())
+    return {"items": items, "total": sum(i["vtotal"] for i in items)}
+
+
+class OrcamentoRequest(BaseModel):
+    items: list[dict]
+    total: float
+    client_name: str
+    client_cnpj: str = ""
+
+
+@app.post("/api/orcamento/gerar-pdf")
+async def gerar_pdf_api(body: OrcamentoRequest, request: Request):
+    session = _get_session(request)
+    if not session:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    from datetime import date as _date
+    today = _date.today().strftime("%d/%m/%Y")
+
+    table_rows = ""
+    for item in body.items:
+        table_rows += (
+            f"| {item['ambiente']} | {item['grupo']} | {item['qtd']} "
+            f"| {_fmt_brl(item['vunit'])} | {_fmt_brl(item['vtotal'])} |\n"
+        )
+    table_rows += f"| **TOTAL GERAL** | | | | **{_fmt_brl(body.total)}** |\n"
+
+    md_content = f"""# ORÇAMENTO DE ILUMINAÇÃO - {body.client_name.upper()}
+
+**CLIENTE:** {body.client_name.upper()}
+**CNPJ:** {body.client_cnpj}
+**DATA:** {today}
+
+---
+
+## 📦 Itens do Orçamento
+
+| Ambiente | Grupo | Qtd | Valor Unit. | Total |
+| :--- | :--- | :---: | :--- | :--- |
+{table_rows}
+"""
+
+    tmp_dir = Path(tempfile.mkdtemp(prefix="orcamento_"))
+    md_path = tmp_dir / "orcamento.md"
+    md_path.write_text(md_content, encoding="utf-8")
+
+    script  = WORKSPACE / "carvalhaescomercial-orcamentos" / "scripts" / "gerar_orcamento.py"
+    py_bin  = Path(sys.executable)
+
+    result = subprocess.run(
+        [str(py_bin), str(script), str(md_path)],
+        capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        raise HTTPException(status_code=500, detail=f"Erro ao gerar PDF: {result.stderr}")
+
+    pdf_path = tmp_dir / "orcamento.pdf"
+    if not pdf_path.exists():
+        raise HTTPException(status_code=500, detail="PDF não foi gerado")
+
+    token = str(uuid.uuid4())
+    _pdf_cache[token] = str(pdf_path)
+
+    safe_name = re.sub(r"[^a-z0-9-]", "-", body.client_name.lower())
+    return {"token": token, "filename": f"orcamento-{safe_name}.pdf"}
+
+
+@app.get("/api/orcamento/download/{token}")
+async def download_pdf(token: str):
+    pdf_path = _pdf_cache.get(token)
+    if not pdf_path or not Path(pdf_path).exists():
+        raise HTTPException(status_code=404, detail="PDF não encontrado ou expirado")
+    return FileResponse(pdf_path, media_type="application/pdf", filename="orcamento.pdf")
 
 
 # ── Static (must be last) ─────────────────────────────────────────────────────

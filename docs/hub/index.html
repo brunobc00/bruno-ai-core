@@ -402,6 +402,112 @@
         #report-empty { color: #555; font-size: 0.9rem; text-align: center; padding: 3rem 0; display: none; }
         #report-loading { color: #555; font-size: 0.9rem; text-align: center; padding: 3rem 0; display: none; }
         #report-error { color: #ff5050; font-size: 0.85rem; text-align: center; padding: 2rem 0; display: none; }
+
+        /* ── Orçamentos ───────────────────────────────────────────── */
+        .orc-step {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.2rem;
+            transition: border-color 0.2s;
+        }
+        .orc-step.active { border-color: rgba(31,255,140,0.4); }
+        .orc-step.done   { border-color: rgba(31,255,140,0.2); opacity: 0.6; }
+        .orc-step-header {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            margin-bottom: 0.8rem;
+        }
+        .orc-step-num {
+            width: 28px; height: 28px;
+            background: rgba(31,255,140,0.1);
+            border: 1px solid rgba(31,255,140,0.3);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.75rem; font-weight: 800; color: var(--accent-color);
+            flex-shrink: 0;
+        }
+        .orc-step-title { font-weight: 700; font-size: 0.95rem; color: var(--text-primary); }
+        .orc-user-bar {
+            display: flex; align-items: center; gap: 0.8rem;
+            padding: 0.8rem 1rem;
+            background: rgba(31,255,140,0.05);
+            border: 1px solid rgba(31,255,140,0.2);
+            border-radius: 10px;
+            margin-bottom: 1.5rem;
+            font-size: 0.88rem; color: var(--text-secondary);
+        }
+        .orc-user-bar strong { color: var(--accent-color); }
+        .orc-input {
+            width: 100%;
+            box-sizing: border-box;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            padding: 0.6rem 0.9rem;
+            font-size: 0.9rem;
+            margin-bottom: 0.8rem;
+        }
+        .orc-input:focus { outline: none; border-color: var(--accent-color); }
+        .orc-preview-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; margin-top: 1rem; }
+        .orc-preview-table th {
+            text-align: left; padding: 0.6rem 0.8rem;
+            color: var(--accent-color); border-bottom: 1px solid var(--border-color);
+            font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .orc-preview-table td { padding: 0.5rem 0.8rem; color: var(--text-secondary); border-bottom: 1px solid rgba(255,255,255,0.04); }
+        .orc-preview-table tr:last-child td { border-bottom: none; font-weight: 700; color: var(--accent-color); }
+        .orc-preview-table .td-r { text-align: right; }
+        .orc-total-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0.8rem 1rem;
+            background: rgba(31,255,140,0.06);
+            border: 1px solid rgba(31,255,140,0.2);
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+        .orc-total-bar .label { color: var(--text-secondary); font-size: 0.88rem; }
+        .orc-total-bar .value { color: var(--accent-color); font-size: 1.2rem; font-weight: 800; }
+        .orc-download-box {
+            text-align: center;
+            padding: 2rem;
+            background: rgba(31,255,140,0.04);
+            border: 1px solid rgba(31,255,140,0.2);
+            border-radius: 12px;
+            margin-top: 1rem;
+        }
+        .orc-download-box .dl-icon { font-size: 3rem; margin-bottom: 0.5rem; }
+        .orc-download-box .dl-msg { color: var(--text-secondary); font-size: 0.88rem; margin-bottom: 1.2rem; }
+        .btn-dl {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            padding: 0.7rem 2rem;
+            border-radius: 10px;
+            background: rgba(31,255,140,0.12);
+            border: 1px solid rgba(31,255,140,0.5);
+            color: var(--accent-color);
+            font-size: 0.9rem; font-weight: 700;
+            cursor: pointer; text-decoration: none;
+            transition: background 0.2s;
+        }
+        .btn-dl:hover { background: rgba(31,255,140,0.22); }
+        .orc-connect-box {
+            text-align: center; padding: 3rem 1rem;
+        }
+        .orc-connect-box p { color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.95rem; }
+        .btn-google {
+            display: inline-flex; align-items: center; gap: 0.7rem;
+            padding: 0.8rem 2rem;
+            border-radius: 10px;
+            background: #fff; color: #333;
+            font-size: 0.92rem; font-weight: 700;
+            border: none; cursor: pointer;
+            transition: opacity 0.2s; text-decoration: none;
+        }
+        .btn-google:hover { opacity: 0.9; }
+        .btn-google img { width: 20px; height: 20px; }
     </style>
 </head>
 <body>
@@ -420,6 +526,7 @@
             <li><a href="#repo-orcamentos" class="nav-item">💰 Orçamentos</a></li>
             <li class="nav-label">Ferramentas</li>
             <li><a href="#relatorio" class="nav-item">📊 Relatório de Atividades</a></li>
+            <li><a href="#orcamentos" class="nav-item">📋 Gerador de Orçamentos</a></li>
             <li><a href="#chat" class="nav-item">💬 Chat Antigravity</a></li>
             <li class="nav-label">Referência</li>
             <li><a href="#normas" class="nav-item">📚 Normas CEMIG</a></li>
@@ -1480,6 +1587,109 @@ git add . &amp;&amp; git commit -m &quot;&lt;tipo&gt;: &lt;descrição&gt;&quot;
             <div id="report-people"></div>
         </section>
 
+        <!-- ======================== ORÇAMENTOS ======================== -->
+        <section id="orcamentos" class="page">
+            <header>
+                <h1>Gerador de Orçamentos</h1>
+                <p class="subtitle">Leia uma planilha Google Sheets, revise a tabela pivot e exporte o PDF.</p>
+            </header>
+
+            <!-- Login gate -->
+            <div id="orc-login-gate" style="display:none;">
+                <div class="orc-connect-box">
+                    <p>Conecte sua conta Google para acessar suas planilhas.</p>
+                    <a href="/api/auth/google" class="btn-google">
+                        <img src="https://www.google.com/favicon.ico" alt="G">
+                        Entrar com Google
+                    </a>
+                </div>
+            </div>
+
+            <!-- Workflow (shown when logged in) -->
+            <div id="orc-workflow" style="display:none;">
+
+                <!-- User bar -->
+                <div class="orc-user-bar">
+                    <span>👤</span>
+                    <span>Conectado como <strong id="orc-user-email">—</strong></span>
+                    <span style="flex:1"></span>
+                    <a href="/api/auth/logout" style="color:#666;font-size:0.8rem;text-decoration:none;">Sair</a>
+                </div>
+
+                <!-- Step 1: Planilha URL -->
+                <div class="orc-step active" id="orc-step-1">
+                    <div class="orc-step-header">
+                        <div class="orc-step-num">1</div>
+                        <div class="orc-step-title">Cole o link da planilha Google Sheets</div>
+                    </div>
+                    <input class="orc-input" id="orc-sheet-url" type="url"
+                        placeholder="https://docs.google.com/spreadsheets/d/...">
+                    <button class="report-btn" id="orc-btn-processar" onclick="orcProcessar()">
+                        Processar Planilha →
+                    </button>
+                    <div id="orc-step1-error" style="color:#ff5050;font-size:0.83rem;margin-top:0.5rem;display:none;"></div>
+                </div>
+
+                <!-- Step 2: Preview -->
+                <div class="orc-step" id="orc-step-2" style="display:none;">
+                    <div class="orc-step-header">
+                        <div class="orc-step-num">2</div>
+                        <div class="orc-step-title">Revise o resumo do orçamento</div>
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="orc-preview-table" id="orc-table">
+                            <thead>
+                                <tr>
+                                    <th>Ambiente</th>
+                                    <th>Grupo</th>
+                                    <th class="td-r">Qtd</th>
+                                    <th class="td-r">Unit. c/desc</th>
+                                    <th class="td-r">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="orc-table-body"></tbody>
+                        </table>
+                    </div>
+                    <div class="orc-total-bar">
+                        <span class="label">Total Geral</span>
+                        <span class="value" id="orc-total-value">—</span>
+                    </div>
+                    <div style="margin-top:1.2rem;display:flex;gap:0.6rem;flex-wrap:wrap;align-items:flex-end;">
+                        <div style="flex:1;min-width:200px;">
+                            <label style="font-size:0.78rem;color:#666;display:block;margin-bottom:0.3rem;">Nome do Cliente</label>
+                            <input class="orc-input" id="orc-client-name" type="text" placeholder="Ex: Condomínio Edifício Ozanam" style="margin-bottom:0;">
+                        </div>
+                        <div style="flex:1;min-width:160px;">
+                            <label style="font-size:0.78rem;color:#666;display:block;margin-bottom:0.3rem;">CNPJ (opcional)</label>
+                            <input class="orc-input" id="orc-client-cnpj" type="text" placeholder="00.000.000/0001-00" style="margin-bottom:0;">
+                        </div>
+                    </div>
+                    <div style="margin-top:1rem;display:flex;gap:0.6rem;flex-wrap:wrap;">
+                        <button class="report-btn report-btn-secondary" onclick="orcReset()">← Voltar</button>
+                        <button class="report-btn" id="orc-btn-gerar" onclick="orcGerarPDF()">Gerar PDF →</button>
+                    </div>
+                    <div id="orc-step2-error" style="color:#ff5050;font-size:0.83rem;margin-top:0.5rem;display:none;"></div>
+                </div>
+
+                <!-- Step 3: Download -->
+                <div class="orc-step" id="orc-step-3" style="display:none;">
+                    <div class="orc-step-header">
+                        <div class="orc-step-num">3</div>
+                        <div class="orc-step-title">Orçamento gerado com sucesso!</div>
+                    </div>
+                    <div class="orc-download-box">
+                        <div class="dl-icon">📄</div>
+                        <div class="dl-msg" id="orc-dl-msg">Seu PDF está pronto para download.</div>
+                        <a id="orc-dl-link" href="#" class="btn-dl" download>⬇ Baixar PDF</a>
+                        <div style="margin-top:1.2rem;">
+                            <button class="report-btn report-btn-secondary" onclick="orcReset()">Gerar outro orçamento</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
         <!-- Chat Page -->
         <section id="chat" class="page">
             <header>
@@ -1534,6 +1744,7 @@ git add . &amp;&amp; git commit -m &quot;&lt;tipo&gt;: &lt;descrição&gt;&quot;
                     _usersLoaded = true;
                     loadAllUsers();
                 }
+                if (pageId === 'orcamentos') orcCheckAuth();
             });
         });
 
@@ -1548,6 +1759,7 @@ git add . &amp;&amp; git commit -m &quot;&lt;tipo&gt;: &lt;descrição&gt;&quot;
                 _usersLoaded = true;
                 loadAllUsers();
             }
+            if (hash === 'orcamentos') orcCheckAuth();
         });
 
         window.addEventListener('popstate', () => {
@@ -2009,6 +2221,139 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
                 btn.disabled = false;
             }
         }
+        // ── Orçamentos ────────────────────────────────────────────────────
+        let _orcPivotData = null;
+
+        async function orcCheckAuth() {
+            try {
+                const r = await fetch('/api/auth/me');
+                if (r.ok) {
+                    const u = await r.json();
+                    document.getElementById('orc-user-email').textContent = u.email;
+                    document.getElementById('orc-login-gate').style.display = 'none';
+                    document.getElementById('orc-workflow').style.display = 'block';
+                } else {
+                    document.getElementById('orc-login-gate').style.display = 'block';
+                    document.getElementById('orc-workflow').style.display = 'none';
+                }
+            } catch {
+                document.getElementById('orc-login-gate').style.display = 'block';
+                document.getElementById('orc-workflow').style.display = 'none';
+            }
+        }
+
+        async function orcProcessar() {
+            const url = document.getElementById('orc-sheet-url').value.trim();
+            const errEl = document.getElementById('orc-step1-error');
+            const btn   = document.getElementById('orc-btn-processar');
+            errEl.style.display = 'none';
+            if (!url) { errEl.textContent = 'Cole o link da planilha.'; errEl.style.display = 'block'; return; }
+
+            btn.disabled = true; btn.textContent = 'Processando…';
+            try {
+                const r = await fetch('/api/sheets/processar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url }),
+                });
+                const data = await r.json();
+                if (!r.ok) {
+                    if (r.status === 401) { orcCheckAuth(); return; }
+                    errEl.textContent = data.detail || 'Erro ao processar planilha.';
+                    errEl.style.display = 'block';
+                    return;
+                }
+                _orcPivotData = data;
+                orcRenderPreview(data);
+                document.getElementById('orc-step-1').classList.remove('active');
+                document.getElementById('orc-step-1').classList.add('done');
+                document.getElementById('orc-step-2').style.display = 'block';
+                document.getElementById('orc-step-2').classList.add('active');
+                document.getElementById('orc-step-3').style.display = 'none';
+            } catch(e) {
+                errEl.textContent = 'Erro de conexão.';
+                errEl.style.display = 'block';
+            } finally {
+                btn.disabled = false; btn.textContent = 'Processar Planilha →';
+            }
+        }
+
+        function orcRenderPreview(data) {
+            const tbody = document.getElementById('orc-table-body');
+            tbody.innerHTML = '';
+            for (const item of data.items) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${item.ambiente}</td><td>${item.grupo}</td>`
+                    + `<td class="td-r">${item.qtd}</td>`
+                    + `<td class="td-r">${fmtBRL(item.vunit)}</td>`
+                    + `<td class="td-r">${fmtBRL(item.vtotal)}</td>`;
+                tbody.appendChild(tr);
+            }
+            document.getElementById('orc-total-value').textContent = fmtBRL(data.total);
+        }
+
+        async function orcGerarPDF() {
+            const name = document.getElementById('orc-client-name').value.trim();
+            const cnpj = document.getElementById('orc-client-cnpj').value.trim();
+            const errEl = document.getElementById('orc-step2-error');
+            const btn   = document.getElementById('orc-btn-gerar');
+            errEl.style.display = 'none';
+            if (!name) { errEl.textContent = 'Informe o nome do cliente.'; errEl.style.display = 'block'; return; }
+            if (!_orcPivotData) return;
+
+            btn.disabled = true; btn.textContent = 'Gerando PDF…';
+            try {
+                const r = await fetch('/api/orcamento/gerar-pdf', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        items: _orcPivotData.items,
+                        total: _orcPivotData.total,
+                        client_name: name,
+                        client_cnpj: cnpj,
+                    }),
+                });
+                const data = await r.json();
+                if (!r.ok) {
+                    errEl.textContent = data.detail || 'Erro ao gerar PDF.';
+                    errEl.style.display = 'block';
+                    return;
+                }
+                const dlLink = document.getElementById('orc-dl-link');
+                dlLink.href     = `/api/orcamento/download/${data.token}`;
+                dlLink.download = data.filename;
+                document.getElementById('orc-dl-msg').textContent = `PDF do orçamento para ${name} pronto.`;
+                document.getElementById('orc-step-2').classList.remove('active');
+                document.getElementById('orc-step-2').classList.add('done');
+                document.getElementById('orc-step-3').style.display = 'block';
+                document.getElementById('orc-step-3').classList.add('active');
+            } catch(e) {
+                errEl.textContent = 'Erro de conexão.';
+                errEl.style.display = 'block';
+            } finally {
+                btn.disabled = false; btn.textContent = 'Gerar PDF →';
+            }
+        }
+
+        function orcReset() {
+            _orcPivotData = null;
+            document.getElementById('orc-sheet-url').value = '';
+            document.getElementById('orc-client-name').value = '';
+            document.getElementById('orc-client-cnpj').value = '';
+            document.getElementById('orc-step1-error').style.display = 'none';
+            document.getElementById('orc-step2-error').style.display = 'none';
+            document.getElementById('orc-step-1').classList.remove('done');
+            document.getElementById('orc-step-1').classList.add('active');
+            document.getElementById('orc-step-2').style.display = 'none';
+            document.getElementById('orc-step-2').classList.remove('active', 'done');
+            document.getElementById('orc-step-3').style.display = 'none';
+            document.getElementById('orc-step-3').classList.remove('active');
+        }
+
+        function fmtBRL(v) {
+            return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
     </script>
 </body>
 </html>
