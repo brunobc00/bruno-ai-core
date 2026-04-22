@@ -265,33 +265,48 @@
         .report-controls {
             display: flex;
             align-items: center;
-            gap: 1rem;
-            margin-bottom: 2rem;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
             flex-wrap: wrap;
         }
-        .report-controls label { color: var(--text-secondary); font-size: 0.9rem; }
-        .report-controls input[type="date"] {
+        .report-controls label { color: var(--text-secondary); font-size: 0.85rem; white-space: nowrap; }
+        .report-controls input[type="date"],
+        .report-controls select {
             background: var(--card-bg);
             border: 1px solid var(--border-color);
             border-radius: 8px;
             color: var(--text-primary);
             padding: 0.45rem 0.8rem;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
         }
-        .report-controls input[type="date"]:focus { outline: none; border-color: var(--accent-color); }
+        .report-controls input[type="date"]:focus,
+        .report-controls select:focus { outline: none; border-color: var(--accent-color); }
+        .report-controls select option { background: #1a1a2e; }
+        .report-controls .ctrl-sep {
+            width: 1px; height: 24px;
+            background: var(--border-color);
+            margin: 0 0.25rem;
+        }
         .report-btn {
-            padding: 0.45rem 1.2rem;
+            padding: 0.45rem 1.1rem;
             border-radius: 8px;
             border: 1px solid rgba(31,255,140,0.4);
             background: rgba(31,255,140,0.08);
             color: var(--accent-color);
-            font-size: 0.88rem;
+            font-size: 0.85rem;
             font-weight: 600;
             cursor: pointer;
             transition: background 0.2s;
+            white-space: nowrap;
         }
         .report-btn:hover { background: rgba(31,255,140,0.18); }
         .report-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .report-btn-secondary {
+            border-color: rgba(255,255,255,0.12);
+            background: transparent;
+            color: var(--text-secondary);
+        }
+        .report-btn-secondary:hover { background: rgba(255,255,255,0.04); color: var(--text-primary); }
 
         .report-kpis {
             display: grid;
@@ -1430,12 +1445,20 @@ git add . &amp;&amp; git commit -m &quot;&lt;tipo&gt;: &lt;descrição&gt;&quot;
             </header>
 
             <div class="report-controls">
-                <label for="report-since">Desde:</label>
+                <label for="report-since">De:</label>
                 <input type="date" id="report-since">
+                <label for="report-until">Até:</label>
+                <input type="date" id="report-until">
                 <button class="report-btn" id="report-load-btn" onclick="loadReport()">Carregar</button>
-                <button class="report-btn" onclick="setQuick(1)">Hoje</button>
-                <button class="report-btn" onclick="setQuick(7)">7 dias</button>
-                <button class="report-btn" onclick="setQuick(30)">30 dias</button>
+                <div class="ctrl-sep"></div>
+                <button class="report-btn report-btn-secondary" onclick="setQuick(0)">Hoje</button>
+                <button class="report-btn report-btn-secondary" onclick="setQuick(6)">7 dias</button>
+                <button class="report-btn report-btn-secondary" onclick="setQuick(29)">30 dias</button>
+                <div class="ctrl-sep"></div>
+                <label for="report-person">Pessoa:</label>
+                <select id="report-person" onchange="filterPerson()">
+                    <option value="">Todos</option>
+                </select>
             </div>
 
             <div class="report-kpis" id="report-kpis" style="display:none">
@@ -1769,36 +1792,116 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
         });
 
         // ── Activity Report ─────────────────────────────────────────────
-        (function() {
-            const sinceInput = document.getElementById('report-since');
-            if (sinceInput) {
-                const yesterday = new Date();
-                yesterday.setDate(yesterday.getDate() - 1);
-                sinceInput.value = yesterday.toISOString().slice(0, 10);
-            }
+        let _reportData = null;
+
+        (function initReportDates() {
+            const today = new Date().toISOString().slice(0, 10);
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const sinceEl = document.getElementById('report-since');
+            const untilEl = document.getElementById('report-until');
+            if (sinceEl) sinceEl.value = yesterday.toISOString().slice(0, 10);
+            if (untilEl) untilEl.value = today;
         })();
 
-        function setQuick(days) {
-            const d = new Date();
-            d.setDate(d.getDate() - days + 1);
-            document.getElementById('report-since').value = d.toISOString().slice(0, 10);
+        function setQuick(daysBack) {
+            const today = new Date();
+            const since = new Date();
+            since.setDate(today.getDate() - daysBack);
+            document.getElementById('report-since').value = since.toISOString().slice(0, 10);
+            document.getElementById('report-until').value = today.toISOString().slice(0, 10);
             loadReport();
         }
 
         function statusBadge(status) {
-            const map = {
-                'New':         'badge-new',
-                'In Progress': 'badge-progress',
-                'Resolved':    'badge-resolved',
-                'Closed':      'badge-closed',
-            };
-            const cls = map[status] || 'badge-default';
-            return `<span class="status-badge ${cls}">${status}</span>`;
+            const map = { 'New':'badge-new', 'In Progress':'badge-progress', 'Resolved':'badge-resolved', 'Closed':'badge-closed' };
+            return `<span class="status-badge ${map[status]||'badge-default'}">${status}</span>`;
+        }
+
+        function buildPersonCard(person) {
+            const initial = person.name.charAt(0).toUpperCase();
+            let redmineHtml = '';
+            if (person.redmine_tasks.length) {
+                redmineHtml = '<div class="person-section-title">Redmine</div><table class="report-table">';
+                for (const t of person.redmine_tasks) {
+                    redmineHtml += `<tr>
+                        <td class="td-id">#${t.id}</td>
+                        <td class="td-proj">${t.project}</td>
+                        <td>${t.subject}</td>
+                        <td>${statusBadge(t.status)}</td>
+                    </tr>`;
+                }
+                redmineHtml += '</table>';
+            }
+            let gitHtml = '';
+            const repos = Object.entries(person.git_by_repo);
+            if (repos.length) {
+                gitHtml = '<div class="person-section-title">Git</div><table class="report-table">';
+                for (const [repo, commits] of repos) {
+                    for (const c of commits) {
+                        gitHtml += `<tr>
+                            <td class="td-hash">${c.hash}</td>
+                            <td class="td-repo">📁 ${repo}</td>
+                            <td>${c.msg}</td>
+                            <td class="td-date">${c.date}</td>
+                        </tr>`;
+                    }
+                }
+                gitHtml += '</table>';
+            }
+            return `<div class="person-card">
+                <div class="person-header">
+                    <div class="person-avatar">${initial}</div>
+                    <div>
+                        <div class="person-name">${person.name}</div>
+                        <div class="person-meta">${person.redmine_tasks.length} tarefa(s) · ${person.total_commits} commit(s)</div>
+                    </div>
+                </div>
+                <div class="person-body">${redmineHtml}${gitHtml}</div>
+            </div>`;
+        }
+
+        function renderReport(data, personFilter) {
+            const emptyEl  = document.getElementById('report-empty');
+            const peopleEl = document.getElementById('report-people');
+
+            const people = personFilter
+                ? data.people.filter(p => p.name === personFilter)
+                : data.people;
+
+            const showUnassigned = !personFilter;
+
+            if (!people.length && !(showUnassigned && data.unassigned.length)) {
+                emptyEl.style.display = 'block';
+                peopleEl.innerHTML = '';
+                return;
+            }
+            emptyEl.style.display = 'none';
+
+            let html = people.map(buildPersonCard).join('');
+
+            if (showUnassigned && data.unassigned.length) {
+                const uaRows = data.unassigned.map(t =>
+                    `<tr><td class="td-id">#${t.id}</td><td class="td-proj">${t.project}</td><td>${t.subject}</td></tr>`
+                ).join('');
+                html += `<div class="unassigned-block">
+                    <div class="ua-title">⚠ ${data.unassigned.length} tarefa(s) sem responsável</div>
+                    <table class="report-table">${uaRows}</table>
+                </div>`;
+            }
+
+            peopleEl.innerHTML = html;
+        }
+
+        function filterPerson() {
+            if (!_reportData) return;
+            renderReport(_reportData, document.getElementById('report-person').value);
         }
 
         async function loadReport() {
             const since = document.getElementById('report-since').value;
-            if (!since) return;
+            const until = document.getElementById('report-until').value;
+            if (!since || !until) return;
 
             const btn      = document.getElementById('report-load-btn');
             const kpis     = document.getElementById('report-kpis');
@@ -1806,18 +1909,21 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
             const errorEl  = document.getElementById('report-error');
             const emptyEl  = document.getElementById('report-empty');
             const peopleEl = document.getElementById('report-people');
+            const select   = document.getElementById('report-person');
 
-            btn.disabled   = true;
+            btn.disabled  = true;
             loading.style.display  = 'block';
             kpis.style.display     = 'none';
             errorEl.style.display  = 'none';
             emptyEl.style.display  = 'none';
             peopleEl.innerHTML     = '';
+            _reportData            = null;
 
             try {
-                const res  = await fetch(`/api/activity-report?since=${since}`);
+                const res = await fetch(`/api/activity-report?since=${since}&until=${until}`);
                 if (!res.ok) throw new Error(`Erro ${res.status}: ${await res.text()}`);
                 const data = await res.json();
+                _reportData = data;
 
                 loading.style.display = 'none';
 
@@ -1827,74 +1933,18 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
                 document.getElementById('kpi-done').textContent    = data.resolved;
                 kpis.style.display = 'grid';
 
-                if (!data.people.length && !data.unassigned.length) {
-                    emptyEl.style.display = 'block';
-                    return;
-                }
+                // Popula dropdown de pessoas
+                const currentFilter = select.value;
+                select.innerHTML = '<option value="">Todos</option>';
+                data.people.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.name;
+                    opt.textContent = p.name;
+                    if (p.name === currentFilter) opt.selected = true;
+                    select.appendChild(opt);
+                });
 
-                let html = '';
-
-                for (const person of data.people) {
-                    const initial = person.name.charAt(0).toUpperCase();
-
-                    let redmineHtml = '';
-                    if (person.redmine_tasks.length) {
-                        redmineHtml += '<div class="person-section-title">Redmine</div>';
-                        redmineHtml += '<table class="report-table">';
-                        for (const t of person.redmine_tasks) {
-                            redmineHtml += `<tr>
-                                <td class="td-id">#${t.id}</td>
-                                <td class="td-proj">${t.project}</td>
-                                <td>${t.subject}</td>
-                                <td>${statusBadge(t.status)}</td>
-                            </tr>`;
-                        }
-                        redmineHtml += '</table>';
-                    }
-
-                    let gitHtml = '';
-                    const repos = Object.entries(person.git_by_repo);
-                    if (repos.length) {
-                        gitHtml += '<div class="person-section-title">Git</div>';
-                        gitHtml += '<table class="report-table">';
-                        for (const [repo, commits] of repos) {
-                            for (const c of commits) {
-                                gitHtml += `<tr>
-                                    <td class="td-hash">${c.hash}</td>
-                                    <td class="td-repo">📁 ${repo}</td>
-                                    <td>${c.msg}</td>
-                                    <td class="td-date">${c.date}</td>
-                                </tr>`;
-                            }
-                        }
-                        gitHtml += '</table>';
-                    }
-
-                    html += `
-                    <div class="person-card">
-                        <div class="person-header">
-                            <div class="person-avatar">${initial}</div>
-                            <div>
-                                <div class="person-name">${person.name}</div>
-                                <div class="person-meta">${person.redmine_tasks.length} tarefa(s) · ${person.total_commits} commit(s)</div>
-                            </div>
-                        </div>
-                        <div class="person-body">${redmineHtml}${gitHtml}</div>
-                    </div>`;
-                }
-
-                if (data.unassigned.length) {
-                    let uaRows = data.unassigned.map(t =>
-                        `<tr><td class="td-id">#${t.id}</td><td class="td-proj">${t.project}</td><td>${t.subject}</td></tr>`
-                    ).join('');
-                    html += `
-                    <div class="unassigned-block">
-                        <div class="ua-title">⚠ ${data.unassigned.length} tarefa(s) novas sem responsável</div>
-                        <table class="report-table">${uaRows}</table>
-                    </div>`;
-                }
-
-                peopleEl.innerHTML = html;
+                renderReport(data, select.value);
 
             } catch (err) {
                 loading.style.display = 'none';

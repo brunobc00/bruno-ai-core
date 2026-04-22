@@ -31,14 +31,15 @@ REDMINE_KEY  = os.getenv("REDMINE_API_KEY")
 
 # ── Activity Report ───────────────────────────────────────────────────────────
 
-def _git_report(since: str) -> dict:
+
+def _git_report_until(since: str, until: str) -> dict:
     repos = {}
     for d in sorted(WORKSPACE.iterdir()):
         if not (d / ".git").exists():
             continue
         result = subprocess.run(
             ["git", "-C", str(d), "log", "--oneline",
-             f"--after={since} 00:00",
+             f"--after={since} 00:00", f"--before={until} 23:59",
              "--format=%h|%ad|%an|%s", "--date=short"],
             capture_output=True, text=True
         )
@@ -56,24 +57,21 @@ def _git_report(since: str) -> dict:
     return repos
 
 
-def _redmine_report(since: str) -> dict:
-    until = (date.today() + timedelta(days=1)).isoformat()
+def _redmine_report(since: str, until: str) -> dict:
+    until_api = (date.fromisoformat(until) + timedelta(days=1)).isoformat()
     url = (f"{REDMINE_URL}/issues.json"
-           f"?updated_on=><{since}|{until}&limit=100&status_id=*")
+           f"?updated_on=><{since}|{until_api}&limit=100&status_id=*")
     resp = httpx.get(url, headers={"X-Redmine-API-Key": REDMINE_KEY}, timeout=15)
     resp.raise_for_status()
     issues = resp.json().get("issues", [])
 
     by_person  = defaultdict(list)
     by_status  = defaultdict(int)
-    new_today  = []
-    resolved   = []
-    today      = date.today().isoformat()
+    resolved   = 0
 
     for i in issues:
-        person  = i.get("assigned_to", {}).get("name", "Sem responsável")
-        status  = i["status"]["name"]
-        created = i.get("created_on", "")[:10]
+        person = i.get("assigned_to", {}).get("name", "Sem responsável")
+        status = i["status"]["name"]
 
         by_person[person].append({
             "id":      i["id"],
@@ -82,29 +80,31 @@ def _redmine_report(since: str) -> dict:
             "project": i.get("project", {}).get("name", "?"),
         })
         by_status[status] += 1
-        if created == today:
-            new_today.append(i)
         if status in ("Resolved", "Closed"):
-            resolved.append(i)
+            resolved += 1
 
     return {
-        "total":      len(issues),
-        "by_person":  dict(by_person),
-        "by_status":  dict(by_status),
-        "new_today":  len(new_today),
-        "resolved":   len(resolved),
+        "total":     len(issues),
+        "by_person": dict(by_person),
+        "by_status": dict(by_status),
+        "resolved":  resolved,
     }
 
 
 @app.get("/api/activity-report")
-async def activity_report(since: str = Query(default=None)):
+async def activity_report(
+    since: str = Query(default=None),
+    until: str = Query(default=None),
+):
+    today = date.today().isoformat()
     if not since:
         since = (date.today() - timedelta(days=1)).isoformat()
-    today = date.today().isoformat()
+    if not until:
+        until = today
 
     try:
-        git_data     = _git_report(since)
-        redmine_data = _redmine_report(since)
+        git_data     = _git_report_until(since, until)
+        redmine_data = _redmine_report(since, until)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
