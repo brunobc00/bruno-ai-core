@@ -276,6 +276,8 @@
             <li><a href="#repo-core" class="nav-item">🧠 AI Core</a></li>
             <li><a href="#repo-contracts" class="nav-item">📄 Contracts</a></li>
             <li><a href="#repo-orcamentos" class="nav-item">💰 Orçamentos</a></li>
+            <li class="nav-label">Ferramentas</li>
+            <li><a href="#chat" class="nav-item">💬 Chat Antigravity</a></li>
             <li class="nav-label">Referência</li>
             <li><a href="#normas" class="nav-item">📚 Normas CEMIG</a></li>
         </ul>
@@ -1297,6 +1299,30 @@ git add . &amp;&amp; git commit -m &quot;&lt;tipo&gt;: &lt;descrição&gt;&quot;
             </div>
         </section>
 
+        <!-- Chat Page -->
+        <section id="chat" class="page">
+            <header>
+                <h1>Chat Antigravity</h1>
+                <p class="subtitle">Converse com o assistente local da Carvalhaes Comercial.</p>
+            </header>
+            <div class="chat-layout">
+                <div class="card chat-container">
+                    <div id="chat-messages" class="chat-messages">
+                        <div class="message bot">Olá Bruno! Como posso ajudar na operação técnica hoje?</div>
+                    </div>
+                    <div class="chat-input-area">
+                        <input type="text" id="user-input" placeholder="Pergunte sobre normas, clientes ou protocolos..." autocomplete="off">
+                        <button id="send-btn">Enviar</button>
+                    </div>
+                </div>
+
+                <div class="debug-panel">
+                    <h3>🧠 Poder de Análise (RAG)</h3>
+                    <div id="debug-content">O que o Ollama ler nos seus manuais aparecerá aqui para depuração...</div>
+                </div>
+            </div>
+        </section>
+
         <footer>
             <p>Antigravity Docs Hub v2.0 | Atualizado em 21/04/2026</p>
         </footer>
@@ -1489,11 +1515,106 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
                 showToast(`✅ ${targetName} salva com sucesso!`);
                 document.getElementById(`save-btn-${project}`).disabled = true;
             } catch (err) {
-                if (err.name !== 'AbortError') {
-                    showToast('Erro ao salvar: ' + err.message, 'error');
-                }
+                console.error(err);
+                showToast('Erro ao salvar arquivo. Verifique as permissões da pasta.', 'error');
             }
         }
+
+        // ── Lógica do Chat ──
+        const chatMessages = document.getElementById('chat-messages');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        const debugContent = document.getElementById('debug-content');
+
+        async function sendMessage() {
+            const text = userInput.value.trim();
+            if (!text) return;
+
+            appendMessage('user', text);
+            userInput.value = '';
+
+            const loadingDiv = appendMessage('bot', 'Digitando...');
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: text })
+                });
+                if (!response.ok) throw new Error('Falha na conexão');
+                
+                const data = await response.json();
+                
+                // Remove a bolha de "Digitando..."
+                loadingDiv.closest('.message').remove();
+                
+                // Adiciona a resposta real com o contexto (pensamento)
+                appendMessage('bot', data.response, data.debug_context);
+            } catch (error) {
+                loadingDiv.innerText = "Erro: Não foi possível conectar ao servidor Antigravity.";
+                console.error(error);
+            }
+        }
+
+        function appendMessage(type, text, context = null) {
+            const wrapper = document.createElement('div');
+            wrapper.className = `message ${type}`;
+            
+            // Header
+            const header = document.createElement('div');
+            header.className = 'message-header';
+            header.innerText = type === 'user' ? 'Bruno' : 'Antigravity';
+            
+            // Botão de Pensamento (só para o Bot e se tiver contexto)
+            if (type === 'bot' && context) {
+                const btn = document.createElement('span');
+                btn.className = 'thought-btn';
+                btn.innerHTML = '🧠 Ver Pensamento';
+                btn.onclick = () => {
+                    const display = wrapper.querySelector('.thought-display');
+                    display.classList.toggle('active');
+                };
+                header.appendChild(btn);
+            }
+            
+            wrapper.appendChild(header);
+            
+            // Texto da mensagem
+            const content = document.createElement('div');
+            content.innerText = text;
+            wrapper.appendChild(content);
+            
+            // Container de Pensamento (escondido por padrão)
+            if (context) {
+                const thoughtDiv = document.createElement('div');
+                thoughtDiv.className = 'thought-display';
+                
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'copy-btn';
+                copyBtn.innerText = '⎘ Copiar';
+                copyBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    navigator.clipboard.writeText(context);
+                    copyBtn.innerText = '✅ Copiado!';
+                    setTimeout(() => copyBtn.innerText = '⎘ Copiar', 2000);
+                };
+                
+                thoughtDiv.appendChild(copyBtn);
+                const code = document.createElement('div');
+                code.innerText = context;
+                thoughtDiv.appendChild(code);
+                wrapper.appendChild(thoughtDiv);
+            }
+            
+            chatMessages.appendChild(wrapper);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return content;
+        }
+
+        if (sendBtn) sendBtn.addEventListener('click', sendMessage);
+        if (userInput) userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
     </script>
 </body>
 </html>
