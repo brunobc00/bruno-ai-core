@@ -32,29 +32,86 @@ REDMINE_KEY  = os.getenv("REDMINE_API_KEY")
 # ── Activity Report ───────────────────────────────────────────────────────────
 
 
+def _parse_commits(raw: str) -> list[dict]:
+    commits = []
+    for line in raw.strip().splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        parts = line.split("|", 3)
+        if len(parts) == 4:
+            commits.append({"hash": parts[0], "date": parts[1],
+                            "author": parts[2], "msg": parts[3]})
+    return commits
+
+
+def _main_branch(repo_path: str) -> str:
+    for candidate in ("main", "master"):
+        r = subprocess.run(
+            ["git", "-C", repo_path, "rev-parse", "--verify", f"origin/{candidate}"],
+            capture_output=True
+        )
+        if r.returncode == 0:
+            return candidate
+    return "main"
+
+
 def _git_report_until(since: str, until: str) -> dict:
     repos = {}
     for d in sorted(WORKSPACE.iterdir()):
         if not (d / ".git").exists():
             continue
+        main = _main_branch(str(d))
         result = subprocess.run(
-            ["git", "-C", str(d), "log", "--oneline",
+            ["git", "-C", str(d), "log", f"origin/{main}",
              f"--after={since} 00:00", f"--before={until} 23:59",
              "--format=%h|%ad|%an|%s", "--date=short"],
             capture_output=True, text=True
         )
-        lines = [l for l in result.stdout.strip().splitlines() if l]
-        if not lines:
-            continue
-        commits = []
-        for line in lines:
-            parts = line.split("|", 3)
-            if len(parts) == 4:
-                commits.append({"hash": parts[0], "date": parts[1],
-                                "author": parts[2], "msg": parts[3]})
+        commits = _parse_commits(result.stdout)
         if commits:
             repos[d.name] = commits
     return repos
+
+
+def _git_pending(since: str, until: str) -> dict:
+    """Commits em branches remotas não mergeadas no main, agrupados por repo→branch."""
+    result: dict = {}
+    for d in sorted(WORKSPACE.iterdir()):
+        if not (d / ".git").exists():
+            continue
+        # Atualiza refs remotas silenciosamente
+        subprocess.run(["git", "-C", str(d), "fetch", "--quiet"],
+                       capture_output=True)
+        main = _main_branch(str(d))
+
+        branches_r = subprocess.run(
+            ["git", "-C", str(d), "branch", "-r",
+             "--no-merged", f"origin/{main}"],
+            capture_output=True, text=True
+        )
+        branches = [
+            b.strip() for b in branches_r.stdout.splitlines()
+            if b.strip() and "HEAD" not in b
+        ]
+
+        repo_pending: dict = {}
+        for branch in branches:
+            log_r = subprocess.run(
+                ["git", "-C", str(d), "log", branch,
+                 f"--not", f"origin/{main}",
+                 f"--after={since} 00:00", f"--before={until} 23:59",
+                 "--format=%h|%ad|%an|%s", "--date=short"],
+                capture_output=True, text=True
+            )
+            commits = _parse_commits(log_r.stdout)
+            if commits:
+                short_branch = branch.removeprefix("origin/")
+                repo_pending[short_branch] = commits
+
+        if repo_pending:
+            result[d.name] = repo_pending
+    return result
 
 
 def _redmine_report(since: str, until: str) -> dict:
@@ -104,34 +161,56 @@ async def activity_report(
 
     try:
         git_data     = _git_report_until(since, until)
+        pending_data = _git_pending(since, until)
         redmine_data = _redmine_report(since, until)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+    # Commits mergeados por autor
     git_by_author: dict = defaultdict(list)
     for repo, commits in git_data.items():
         for c in commits:
             git_by_author[c["author"]].append({**c, "repo": repo})
 
+    # Commits pendentes por autor → {author: [{repo, branch, hash, date, msg}]}
+    pending_by_author: dict = defaultdict(list)
+    total_pending = 0
+    for repo, branches in pending_data.items():
+        for branch, commits in branches.items():
+            for c in commits:
+                pending_by_author[c["author"]].append(
+                    {**c, "repo": repo, "branch": branch}
+                )
+                total_pending += 1
+
     redmine_people = {p for p in redmine_data["by_person"] if p != "Sem responsável"}
-    all_people     = sorted(redmine_people | set(git_by_author.keys()))
+    all_people = sorted(
+        redmine_people | set(git_by_author.keys()) | set(pending_by_author.keys())
+    )
 
     people = []
     for person in all_people:
-        redmine_tasks = redmine_data["by_person"].get(person, [])
-        git_commits   = list(git_by_author.get(person, []))
-        if not redmine_tasks and not git_commits:
+        redmine_tasks    = redmine_data["by_person"].get(person, [])
+        git_commits      = list(git_by_author.get(person, []))
+        pending_commits  = list(pending_by_author.get(person, []))
+        if not redmine_tasks and not git_commits and not pending_commits:
             continue
 
         by_repo: dict = defaultdict(list)
         for c in git_commits:
             by_repo[c["repo"]].append(c)
 
+        pending_by_branch: dict = defaultdict(list)
+        for c in pending_commits:
+            pending_by_branch[f"{c['repo']} / {c['branch']}"].append(c)
+
         people.append({
-            "name":          person,
-            "redmine_tasks": redmine_tasks,
-            "git_by_repo":   dict(by_repo),
-            "total_commits": len(git_commits),
+            "name":             person,
+            "redmine_tasks":    redmine_tasks,
+            "git_by_repo":      dict(by_repo),
+            "total_commits":    len(git_commits),
+            "pending_by_branch": dict(pending_by_branch),
+            "total_pending":    len(pending_commits),
         })
 
     unassigned = [t for t in redmine_data["by_person"].get("Sem responsável", [])
@@ -144,6 +223,7 @@ async def activity_report(
         "active_repos":   len(git_data),
         "total_issues":   redmine_data["total"],
         "resolved":       redmine_data["resolved"],
+        "total_pending":  total_pending,
         "people":         people,
         "unassigned":     unassigned,
     }

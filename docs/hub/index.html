@@ -394,6 +394,11 @@
         }
         .unassigned-block .ua-title { font-weight: 700; color: #ffc800; margin-bottom: 0.6rem; font-size: 0.88rem; }
 
+        .pending-title { color: #ffa040 !important; }
+        .td-pending { color: #ffa040 !important; }
+        .meta-pending { color: #ffa040; font-weight: 600; }
+        .kpi-box:has(#kpi-pending) .kpi-num { color: #ffa040; }
+
         #report-empty { color: #555; font-size: 0.9rem; text-align: center; padding: 3rem 0; display: none; }
         #report-loading { color: #555; font-size: 0.9rem; text-align: center; padding: 3rem 0; display: none; }
         #report-error { color: #ff5050; font-size: 0.85rem; text-align: center; padding: 2rem 0; display: none; }
@@ -1462,7 +1467,8 @@ git add . &amp;&amp; git commit -m &quot;&lt;tipo&gt;: &lt;descrição&gt;&quot;
             </div>
 
             <div class="report-kpis" id="report-kpis" style="display:none">
-                <div class="kpi-box"><div class="kpi-num" id="kpi-commits">—</div><div class="kpi-label">Commits</div></div>
+                <div class="kpi-box"><div class="kpi-num" id="kpi-commits">—</div><div class="kpi-label">Commits (main)</div></div>
+                <div class="kpi-box"><div class="kpi-num" id="kpi-pending">—</div><div class="kpi-label">Pendentes revisão</div></div>
                 <div class="kpi-box"><div class="kpi-num" id="kpi-repos">—</div><div class="kpi-label">Repos ativos</div></div>
                 <div class="kpi-box"><div class="kpi-num" id="kpi-issues">—</div><div class="kpi-label">Tarefas Redmine</div></div>
                 <div class="kpi-box"><div class="kpi-num" id="kpi-done">—</div><div class="kpi-label">Concluídas</div></div>
@@ -1855,6 +1861,7 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
 
         function buildPersonCard(person) {
             const initial = person.name.charAt(0).toUpperCase();
+
             let redmineHtml = '';
             if (person.redmine_tasks.length) {
                 redmineHtml = '<div class="person-section-title">Redmine</div><table class="report-table">';
@@ -1868,10 +1875,11 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
                 }
                 redmineHtml += '</table>';
             }
+
             let gitHtml = '';
             const repos = Object.entries(person.git_by_repo);
             if (repos.length) {
-                gitHtml = '<div class="person-section-title">Git</div><table class="report-table">';
+                gitHtml = '<div class="person-section-title">Git — main</div><table class="report-table">';
                 for (const [repo, commits] of repos) {
                     for (const c of commits) {
                         gitHtml += `<tr>
@@ -1884,15 +1892,37 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
                 }
                 gitHtml += '</table>';
             }
+
+            let pendingHtml = '';
+            const pendingBranches = Object.entries(person.pending_by_branch || {});
+            if (pendingBranches.length) {
+                pendingHtml = '<div class="person-section-title pending-title">⏳ Em revisão (não mergeado)</div><table class="report-table">';
+                for (const [repoAndBranch, commits] of pendingBranches) {
+                    for (const c of commits) {
+                        pendingHtml += `<tr>
+                            <td class="td-hash">${c.hash}</td>
+                            <td class="td-repo td-pending">🔀 ${repoAndBranch}</td>
+                            <td>${c.msg}</td>
+                            <td class="td-date">${c.date}</td>
+                        </tr>`;
+                    }
+                }
+                pendingHtml += '</table>';
+            }
+
+            const pendingMeta = person.total_pending
+                ? ` · <span class="meta-pending">${person.total_pending} pendente(s)</span>`
+                : '';
+
             return `<div class="person-card">
                 <div class="person-header">
                     <div class="person-avatar">${initial}</div>
                     <div>
                         <div class="person-name">${person.name}</div>
-                        <div class="person-meta">${person.redmine_tasks.length} tarefa(s) · ${person.total_commits} commit(s)</div>
+                        <div class="person-meta">${person.redmine_tasks.length} tarefa(s) · ${person.total_commits} commit(s)${pendingMeta}</div>
                     </div>
                 </div>
-                <div class="person-body">${redmineHtml}${gitHtml}</div>
+                <div class="person-body">${redmineHtml}${gitHtml}${pendingHtml}</div>
             </div>`;
         }
 
@@ -1962,10 +1992,11 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
 
                 loading.style.display = 'none';
 
-                document.getElementById('kpi-commits').textContent = data.total_commits;
-                document.getElementById('kpi-repos').textContent   = data.active_repos;
-                document.getElementById('kpi-issues').textContent  = data.total_issues;
-                document.getElementById('kpi-done').textContent    = data.resolved;
+                document.getElementById('kpi-commits').textContent  = data.total_commits;
+                document.getElementById('kpi-pending').textContent  = data.total_pending;
+                document.getElementById('kpi-repos').textContent    = data.active_repos;
+                document.getElementById('kpi-issues').textContent   = data.total_issues;
+                document.getElementById('kpi-done').textContent     = data.resolved;
                 kpis.style.display = 'grid';
 
                 renderReport(data, select.value);
