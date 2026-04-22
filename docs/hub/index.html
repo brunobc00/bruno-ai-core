@@ -260,6 +260,128 @@
         .company-info-item { display: flex; flex-direction: column; gap: 0.2rem; }
         .company-info-item .info-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: #555; font-weight: 700; }
         .company-info-item .info-value { font-size: 0.9rem; color: var(--text-primary); }
+
+        /* ── Activity Report ──────────────────────────────────────────── */
+        .report-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+        .report-controls label { color: var(--text-secondary); font-size: 0.9rem; }
+        .report-controls input[type="date"] {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            padding: 0.45rem 0.8rem;
+            font-size: 0.9rem;
+        }
+        .report-controls input[type="date"]:focus { outline: none; border-color: var(--accent-color); }
+        .report-btn {
+            padding: 0.45rem 1.2rem;
+            border-radius: 8px;
+            border: 1px solid rgba(31,255,140,0.4);
+            background: rgba(31,255,140,0.08);
+            color: var(--accent-color);
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .report-btn:hover { background: rgba(31,255,140,0.18); }
+        .report-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .report-kpis {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .kpi-box {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+        }
+        .kpi-box .kpi-num { font-size: 2rem; font-weight: 800; color: var(--accent-color); }
+        .kpi-box .kpi-label { font-size: 0.75rem; color: #666; margin-top: 0.2rem; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .person-card {
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 1.2rem;
+        }
+        .person-header {
+            background: rgba(255,255,255,0.03);
+            border-bottom: 1px solid var(--border-color);
+            padding: 0.9rem 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.9rem;
+        }
+        .person-avatar {
+            width: 36px; height: 36px;
+            background: var(--accent-color);
+            color: #000;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 15px;
+            flex-shrink: 0;
+        }
+        .person-name { font-weight: 700; font-size: 0.95rem; color: var(--text-primary); }
+        .person-meta { font-size: 0.78rem; color: #666; margin-top: 0.15rem; }
+
+        .person-body { padding: 0.8rem 1.2rem 1rem; }
+        .person-section-title {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #555;
+            margin: 0.8rem 0 0.5rem;
+        }
+        .report-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+        .report-table td { padding: 0.45rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.04); color: var(--text-secondary); vertical-align: top; }
+        .report-table tr:last-child td { border-bottom: none; }
+        .report-table .td-id  { color: #555; width: 50px; }
+        .report-table .td-proj { color: #888; width: 130px; }
+        .report-table .td-hash { font-family: 'Fira Code', monospace; color: #555; width: 56px; }
+        .report-table .td-repo { color: var(--accent-color); width: 180px; }
+        .report-table .td-date { color: #555; width: 80px; white-space: nowrap; }
+
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .badge-new       { background: rgba(100,160,255,0.15); color: #64a0ff; }
+        .badge-progress  { background: rgba(255,200,0,0.15);   color: #ffc800; }
+        .badge-resolved  { background: rgba(31,255,140,0.15);  color: #1fff8c; }
+        .badge-closed    { background: rgba(120,120,120,0.15); color: #888; }
+        .badge-default   { background: rgba(180,180,180,0.1);  color: #aaa; }
+
+        .unassigned-block {
+            background: rgba(255,200,0,0.06);
+            border: 1px solid rgba(255,200,0,0.25);
+            border-radius: 10px;
+            padding: 1rem 1.2rem;
+            margin-top: 1rem;
+        }
+        .unassigned-block .ua-title { font-weight: 700; color: #ffc800; margin-bottom: 0.6rem; font-size: 0.88rem; }
+
+        #report-empty { color: #555; font-size: 0.9rem; text-align: center; padding: 3rem 0; display: none; }
+        #report-loading { color: #555; font-size: 0.9rem; text-align: center; padding: 3rem 0; display: none; }
+        #report-error { color: #ff5050; font-size: 0.85rem; text-align: center; padding: 2rem 0; display: none; }
     </style>
 </head>
 <body>
@@ -277,6 +399,7 @@
             <li><a href="#repo-contracts" class="nav-item">📄 Contracts</a></li>
             <li><a href="#repo-orcamentos" class="nav-item">💰 Orçamentos</a></li>
             <li class="nav-label">Ferramentas</li>
+            <li><a href="#relatorio" class="nav-item">📊 Relatório de Atividades</a></li>
             <li><a href="#chat" class="nav-item">💬 Chat Antigravity</a></li>
             <li class="nav-label">Referência</li>
             <li><a href="#normas" class="nav-item">📚 Normas CEMIG</a></li>
@@ -1299,6 +1422,35 @@ git add . &amp;&amp; git commit -m &quot;&lt;tipo&gt;: &lt;descrição&gt;&quot;
             </div>
         </section>
 
+        <!-- ======================== RELATÓRIO ======================== -->
+        <section id="relatorio" class="page">
+            <header>
+                <h1>Relatório de Atividades</h1>
+                <p class="subtitle">Commits Git e tarefas Redmine por período — visão por responsável.</p>
+            </header>
+
+            <div class="report-controls">
+                <label for="report-since">Desde:</label>
+                <input type="date" id="report-since">
+                <button class="report-btn" id="report-load-btn" onclick="loadReport()">Carregar</button>
+                <button class="report-btn" onclick="setQuick(1)">Hoje</button>
+                <button class="report-btn" onclick="setQuick(7)">7 dias</button>
+                <button class="report-btn" onclick="setQuick(30)">30 dias</button>
+            </div>
+
+            <div class="report-kpis" id="report-kpis" style="display:none">
+                <div class="kpi-box"><div class="kpi-num" id="kpi-commits">—</div><div class="kpi-label">Commits</div></div>
+                <div class="kpi-box"><div class="kpi-num" id="kpi-repos">—</div><div class="kpi-label">Repos ativos</div></div>
+                <div class="kpi-box"><div class="kpi-num" id="kpi-issues">—</div><div class="kpi-label">Tarefas Redmine</div></div>
+                <div class="kpi-box"><div class="kpi-num" id="kpi-done">—</div><div class="kpi-label">Concluídas</div></div>
+            </div>
+
+            <div id="report-loading">⏳ Carregando dados...</div>
+            <div id="report-error"></div>
+            <div id="report-empty">Nenhuma atividade encontrada no período.</div>
+            <div id="report-people"></div>
+        </section>
+
         <!-- Chat Page -->
         <section id="chat" class="page">
             <header>
@@ -1615,6 +1767,143 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
         if (userInput) userInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') sendMessage();
         });
+
+        // ── Activity Report ─────────────────────────────────────────────
+        (function() {
+            const sinceInput = document.getElementById('report-since');
+            if (sinceInput) {
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                sinceInput.value = yesterday.toISOString().slice(0, 10);
+            }
+        })();
+
+        function setQuick(days) {
+            const d = new Date();
+            d.setDate(d.getDate() - days + 1);
+            document.getElementById('report-since').value = d.toISOString().slice(0, 10);
+            loadReport();
+        }
+
+        function statusBadge(status) {
+            const map = {
+                'New':         'badge-new',
+                'In Progress': 'badge-progress',
+                'Resolved':    'badge-resolved',
+                'Closed':      'badge-closed',
+            };
+            const cls = map[status] || 'badge-default';
+            return `<span class="status-badge ${cls}">${status}</span>`;
+        }
+
+        async function loadReport() {
+            const since = document.getElementById('report-since').value;
+            if (!since) return;
+
+            const btn      = document.getElementById('report-load-btn');
+            const kpis     = document.getElementById('report-kpis');
+            const loading  = document.getElementById('report-loading');
+            const errorEl  = document.getElementById('report-error');
+            const emptyEl  = document.getElementById('report-empty');
+            const peopleEl = document.getElementById('report-people');
+
+            btn.disabled   = true;
+            loading.style.display  = 'block';
+            kpis.style.display     = 'none';
+            errorEl.style.display  = 'none';
+            emptyEl.style.display  = 'none';
+            peopleEl.innerHTML     = '';
+
+            try {
+                const res  = await fetch(`/api/activity-report?since=${since}`);
+                if (!res.ok) throw new Error(`Erro ${res.status}: ${await res.text()}`);
+                const data = await res.json();
+
+                loading.style.display = 'none';
+
+                document.getElementById('kpi-commits').textContent = data.total_commits;
+                document.getElementById('kpi-repos').textContent   = data.active_repos;
+                document.getElementById('kpi-issues').textContent  = data.total_issues;
+                document.getElementById('kpi-done').textContent    = data.resolved;
+                kpis.style.display = 'grid';
+
+                if (!data.people.length && !data.unassigned.length) {
+                    emptyEl.style.display = 'block';
+                    return;
+                }
+
+                let html = '';
+
+                for (const person of data.people) {
+                    const initial = person.name.charAt(0).toUpperCase();
+
+                    let redmineHtml = '';
+                    if (person.redmine_tasks.length) {
+                        redmineHtml += '<div class="person-section-title">Redmine</div>';
+                        redmineHtml += '<table class="report-table">';
+                        for (const t of person.redmine_tasks) {
+                            redmineHtml += `<tr>
+                                <td class="td-id">#${t.id}</td>
+                                <td class="td-proj">${t.project}</td>
+                                <td>${t.subject}</td>
+                                <td>${statusBadge(t.status)}</td>
+                            </tr>`;
+                        }
+                        redmineHtml += '</table>';
+                    }
+
+                    let gitHtml = '';
+                    const repos = Object.entries(person.git_by_repo);
+                    if (repos.length) {
+                        gitHtml += '<div class="person-section-title">Git</div>';
+                        gitHtml += '<table class="report-table">';
+                        for (const [repo, commits] of repos) {
+                            for (const c of commits) {
+                                gitHtml += `<tr>
+                                    <td class="td-hash">${c.hash}</td>
+                                    <td class="td-repo">📁 ${repo}</td>
+                                    <td>${c.msg}</td>
+                                    <td class="td-date">${c.date}</td>
+                                </tr>`;
+                            }
+                        }
+                        gitHtml += '</table>';
+                    }
+
+                    html += `
+                    <div class="person-card">
+                        <div class="person-header">
+                            <div class="person-avatar">${initial}</div>
+                            <div>
+                                <div class="person-name">${person.name}</div>
+                                <div class="person-meta">${person.redmine_tasks.length} tarefa(s) · ${person.total_commits} commit(s)</div>
+                            </div>
+                        </div>
+                        <div class="person-body">${redmineHtml}${gitHtml}</div>
+                    </div>`;
+                }
+
+                if (data.unassigned.length) {
+                    let uaRows = data.unassigned.map(t =>
+                        `<tr><td class="td-id">#${t.id}</td><td class="td-proj">${t.project}</td><td>${t.subject}</td></tr>`
+                    ).join('');
+                    html += `
+                    <div class="unassigned-block">
+                        <div class="ua-title">⚠ ${data.unassigned.length} tarefa(s) novas sem responsável</div>
+                        <table class="report-table">${uaRows}</table>
+                    </div>`;
+                }
+
+                peopleEl.innerHTML = html;
+
+            } catch (err) {
+                loading.style.display = 'none';
+                errorEl.textContent   = '❌ ' + err.message;
+                errorEl.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+            }
+        }
     </script>
 </body>
 </html>

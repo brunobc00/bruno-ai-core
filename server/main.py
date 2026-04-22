@@ -1,15 +1,155 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from collections import defaultdict
+from datetime import date, timedelta
+from pathlib import Path
+import subprocess
 import httpx
 import os
 
+from dotenv import load_dotenv
+load_dotenv("/home/bruno/Documentos/Github/.env")
+
 app = FastAPI(title="Antigravity Portal")
 
-# Configurações
-OLLAMA_URL = "http://localhost:11434/api/generate"
-DOCS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../docs/hub"))
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+OLLAMA_URL   = "http://localhost:11434/api/generate"
+DOCS_DIR     = os.path.abspath(os.path.join(os.path.dirname(__file__), "../docs/hub"))
+WORKSPACE    = Path("/home/bruno/Documentos/Github")
+REDMINE_URL  = os.getenv("REDMINE_URL")
+REDMINE_KEY  = os.getenv("REDMINE_API_KEY")
+
+
+# ── Activity Report ───────────────────────────────────────────────────────────
+
+def _git_report(since: str) -> dict:
+    repos = {}
+    for d in sorted(WORKSPACE.iterdir()):
+        if not (d / ".git").exists():
+            continue
+        result = subprocess.run(
+            ["git", "-C", str(d), "log", "--oneline",
+             f"--after={since} 00:00",
+             "--format=%h|%ad|%an|%s", "--date=short"],
+            capture_output=True, text=True
+        )
+        lines = [l for l in result.stdout.strip().splitlines() if l]
+        if not lines:
+            continue
+        commits = []
+        for line in lines:
+            parts = line.split("|", 3)
+            if len(parts) == 4:
+                commits.append({"hash": parts[0], "date": parts[1],
+                                "author": parts[2], "msg": parts[3]})
+        if commits:
+            repos[d.name] = commits
+    return repos
+
+
+def _redmine_report(since: str) -> dict:
+    until = (date.today() + timedelta(days=1)).isoformat()
+    url = (f"{REDMINE_URL}/issues.json"
+           f"?updated_on=><{since}|{until}&limit=100&status_id=*")
+    resp = httpx.get(url, headers={"X-Redmine-API-Key": REDMINE_KEY}, timeout=15)
+    resp.raise_for_status()
+    issues = resp.json().get("issues", [])
+
+    by_person  = defaultdict(list)
+    by_status  = defaultdict(int)
+    new_today  = []
+    resolved   = []
+    today      = date.today().isoformat()
+
+    for i in issues:
+        person  = i.get("assigned_to", {}).get("name", "Sem responsável")
+        status  = i["status"]["name"]
+        created = i.get("created_on", "")[:10]
+
+        by_person[person].append({
+            "id":      i["id"],
+            "subject": i["subject"],
+            "status":  status,
+            "project": i.get("project", {}).get("name", "?"),
+        })
+        by_status[status] += 1
+        if created == today:
+            new_today.append(i)
+        if status in ("Resolved", "Closed"):
+            resolved.append(i)
+
+    return {
+        "total":      len(issues),
+        "by_person":  dict(by_person),
+        "by_status":  dict(by_status),
+        "new_today":  len(new_today),
+        "resolved":   len(resolved),
+    }
+
+
+@app.get("/api/activity-report")
+async def activity_report(since: str = Query(default=None)):
+    if not since:
+        since = (date.today() - timedelta(days=1)).isoformat()
+    today = date.today().isoformat()
+
+    try:
+        git_data     = _git_report(since)
+        redmine_data = _redmine_report(since)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    git_by_author: dict = defaultdict(list)
+    for repo, commits in git_data.items():
+        for c in commits:
+            git_by_author[c["author"]].append({**c, "repo": repo})
+
+    redmine_people = {p for p in redmine_data["by_person"] if p != "Sem responsável"}
+    all_people     = sorted(redmine_people | set(git_by_author.keys()))
+
+    people = []
+    for person in all_people:
+        redmine_tasks = redmine_data["by_person"].get(person, [])
+        git_commits   = list(git_by_author.get(person, []))
+        if not redmine_tasks and not git_commits:
+            continue
+
+        by_repo: dict = defaultdict(list)
+        for c in git_commits:
+            by_repo[c["repo"]].append(c)
+
+        people.append({
+            "name":          person,
+            "redmine_tasks": redmine_tasks,
+            "git_by_repo":   dict(by_repo),
+            "total_commits": len(git_commits),
+        })
+
+    unassigned = [t for t in redmine_data["by_person"].get("Sem responsável", [])
+                  if t["status"] == "New"]
+
+    return {
+        "since":          since,
+        "today":          today,
+        "total_commits":  sum(len(c) for c in git_data.values()),
+        "active_repos":   len(git_data),
+        "total_issues":   redmine_data["total"],
+        "resolved":       redmine_data["resolved"],
+        "people":         people,
+        "unassigned":     unassigned,
+    }
+
+
+# ── Chat ──────────────────────────────────────────────────────────────────────
 
 class ChatRequest(BaseModel):
     message: str
@@ -20,24 +160,20 @@ async def chat_endpoint(request: ChatRequest):
     try:
         workspace_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
         norms_path = os.path.join(workspace_path, "cemig/normas")
-        
-        # Modo Bibliotecário: Busca trechos relevantes nos arquivos .md
+
         context_excerpts = []
         msg_lower = request.message.lower()
-        
-        # Mapeamento de arquivos por palavra-chave
+
         files_to_check = []
         if "individual" in msg_lower or "nd 5.1" in msg_lower or "nd5.1" in msg_lower:
             files_to_check.append("nd5_1_texto.md")
         if "coletivo" in msg_lower or "nd 5.2" in msg_lower or "nd5.2" in msg_lower:
             files_to_check.append("nd5_2_000001p.docx_texto.md")
-        
-        # Se o usuário perguntar por algo específico (ex: 63A), buscar em todos os arquivos principais
+
         keywords = ["63a", "63", "disjuntor", "cabo", "bitola", "aterramento", "material"]
-        # Extrai números da mensagem para buscar também
         import re
         numbers = re.findall(r'\d+', msg_lower)
-        
+
         found_keywords = [k for k in keywords if k in msg_lower] + numbers
         if found_keywords and not files_to_check:
             files_to_check = ["nd5_1_texto.md", "nd5_2_000001p.docx_texto.md"]
@@ -49,12 +185,12 @@ async def chat_endpoint(request: ChatRequest):
                     lines = f.readlines()
                     for i, line in enumerate(lines):
                         line_lower = line.lower()
-                        # Busca por palavras ou números isolados
                         if any(re.search(rf'\b{re.escape(k)}\b', line_lower) for k in found_keywords):
                             start = max(0, i - 3)
                             end = min(len(lines), i + 6)
                             context_excerpts.append(f"--- Trecho de {filename} (Linha {i}) ---\n" + "".join(lines[start:end]))
-                        if len(context_excerpts) > 15: break 
+                        if len(context_excerpts) > 15:
+                            break
 
         local_context = "\n".join(context_excerpts) if context_excerpts else "Ambiente local detectado. O usuário está perguntando sobre normas técnicas."
 
@@ -68,12 +204,13 @@ async def chat_endpoint(request: ChatRequest):
             response.raise_for_status()
             res_json = response.json()
             res_json["response"] = f"[Ollama] {res_json['response']}"
-            res_json["debug_context"] = local_context # Enviando o contexto para a interface
+            res_json["debug_context"] = local_context
             return res_json
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# Servir os arquivos estáticos do Docs Hub
+
+# ── Static (must be last) ─────────────────────────────────────────────────────
 app.mount("/", StaticFiles(directory=DOCS_DIR, html=True), name="static")
 
 if __name__ == "__main__":
