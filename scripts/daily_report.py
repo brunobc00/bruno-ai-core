@@ -176,13 +176,165 @@ def format_redmine_section(data: dict, since: str) -> str:
 
 # ── Email ─────────────────────────────────────────────────────────────────────
 
-def send_email(subject: str, body: str):
+def build_html(since: str, today: str, git_data: dict, redmine_data: dict) -> str:
+    """Gera o HTML do email com visão por pessoa."""
+
+    # Mapeia autor git → commits por repo
+    git_by_author = defaultdict(list)
+    for repo, commits in git_data.items():
+        for c in commits:
+            git_by_author[c["author"]].append({**c, "repo": repo})
+
+    # Pessoas únicas (union de git + redmine, exceto 'Sem responsável')
+    redmine_people = {p for p in redmine_data["by_person"] if p != "Sem responsável"}
+    git_people     = set(git_by_author.keys())
+    all_people     = sorted(redmine_people | git_people)
+
+    status_colors = {
+        "New":         ("#e3f0ff", "#1a6fc4"),
+        "In Progress": ("#fff4e0", "#c47a00"),
+        "Resolved":    ("#e3f9e5", "#1a8c2a"),
+        "Closed":      ("#f0f0f0", "#666"),
+    }
+
+    def badge(status):
+        bg, fg = status_colors.get(status, ("#eee", "#333"))
+        return (f'<span style="background:{bg};color:{fg};padding:2px 8px;'
+                f'border-radius:10px;font-size:11px;font-weight:600">{status}</span>')
+
+    total_commits = sum(len(c) for c in git_data.values())
+    total_issues  = len(redmine_data["issues"])
+    total_done    = len(redmine_data["resolved"])
+    sem_resp      = len([t for t in redmine_data["by_person"].get("Sem responsável", [])
+                         if t["status"]["name"] == "New"])
+
+    people_html = ""
+    for person in all_people:
+        redmine_tasks = redmine_data["by_person"].get(person, [])
+        git_commits   = git_by_author.get(person, [])
+        if not redmine_tasks and not git_commits:
+            continue
+
+        # Redmine rows
+        redmine_rows = ""
+        for t in redmine_tasks:
+            status = t["status"]["name"]
+            proj   = t.get("project", {}).get("name", "?")
+            redmine_rows += (
+                f'<tr><td style="color:#aaa;width:50px">#{t["id"]}</td>'
+                f'<td style="color:#888;width:140px">{proj}</td>'
+                f'<td>{t["subject"]}</td>'
+                f'<td style="white-space:nowrap">{badge(status)}</td></tr>'
+            )
+
+        # Git rows (agrupa por repo)
+        git_by_repo = defaultdict(list)
+        for c in git_commits:
+            git_by_repo[c["repo"]].append(c)
+
+        git_rows = ""
+        for repo, commits in sorted(git_by_repo.items()):
+            for c in commits:
+                git_rows += (
+                    f'<tr><td style="color:#aaa;font-family:monospace;width:60px">{c["hash"]}</td>'
+                    f'<td style="color:#CC1417;width:200px">📁 {repo}</td>'
+                    f'<td>{c["msg"]}</td>'
+                    f'<td style="color:#aaa;white-space:nowrap;width:80px">{c["date"]}</td></tr>'
+                )
+
+        people_html += f"""
+        <div style="margin-bottom:24px;border:1px solid #eee;border-radius:8px;overflow:hidden">
+          <div style="background:#f7f7f7;padding:12px 18px;border-bottom:1px solid #eee;display:flex;align-items:center;gap:12px">
+            <div style="width:36px;height:36px;background:#CC1417;color:white;border-radius:50%;
+                        display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px">
+              {person[0].upper()}
+            </div>
+            <div>
+              <div style="font-weight:700;font-size:15px">{person}</div>
+              <div style="font-size:12px;color:#888">
+                {len(redmine_tasks)} tarefa(s) no Redmine &nbsp;·&nbsp; {len(git_commits)} commit(s) no Git
+              </div>
+            </div>
+          </div>
+          {"" if not redmine_tasks else f'''
+          <div style="padding:12px 18px 4px">
+            <div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;
+                        letter-spacing:0.5px;margin-bottom:8px">Redmine</div>
+            <table style="width:100%;border-collapse:collapse;font-size:13px">
+              {redmine_rows}
+            </table>
+          </div>'''}
+          {"" if not git_commits else f'''
+          <div style="padding:12px 18px 4px">
+            <div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;
+                        letter-spacing:0.5px;margin-bottom:8px">Git</div>
+            <table style="width:100%;border-collapse:collapse;font-size:12px;font-family:monospace">
+              {git_rows}
+            </table>
+          </div>'''}
+          <div style="height:12px"></div>
+        </div>"""
+
+    sem_html = ""
+    sem_tasks = [t for t in redmine_data["by_person"].get("Sem responsável", [])
+                 if t["status"]["name"] == "New"]
+    if sem_tasks:
+        rows = "".join(
+            f'<tr><td style="color:#aaa;width:50px">#{t["id"]}</td>'
+            f'<td style="color:#888;width:140px">{t.get("project",{}).get("name","?")}</td>'
+            f'<td>{t["subject"]}</td></tr>'
+            for t in sem_tasks
+        )
+        sem_html = f"""
+        <div style="background:#fff8e1;border:1px solid #ffd54f;border-radius:8px;padding:14px 18px;margin-bottom:24px">
+          <div style="font-weight:700;color:#7a5c00;margin-bottom:10px">
+            ⚠ {len(sem_tasks)} tarefas sem responsável
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:13px">{rows}</table>
+        </div>"""
+
+    return f"""<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:20px;background:#f4f4f4;font-family:Arial,sans-serif;color:#333">
+<div style="max-width:720px;margin:0 auto">
+
+  <!-- Header -->
+  <div style="background:#CC1417;color:white;padding:24px 28px;border-radius:8px 8px 0 0">
+    <div style="font-size:20px;font-weight:700">Relatório de Atividades</div>
+    <div style="font-size:13px;opacity:.85;margin-top:4px">{since} → {today} &nbsp;·&nbsp; P.A. Construshop</div>
+  </div>
+
+  <!-- KPIs -->
+  <div style="background:white;padding:20px 28px;display:flex;gap:12px;border-bottom:1px solid #eee">
+    {"".join(f'<div style="flex:1;background:#f9f9f9;border:1px solid #eee;border-radius:6px;padding:12px;text-align:center"><div style="font-size:26px;font-weight:700;color:#CC1417">{n}</div><div style="font-size:11px;color:#888;margin-top:2px">{l}</div></div>'
+             for n, l in [(total_commits,"Commits"), (len(git_data),"Repos ativos"),
+                          (total_issues,"Tarefas Redmine"), (total_done,"Concluídas")])}
+  </div>
+
+  <!-- Pessoas -->
+  <div style="background:white;padding:20px 28px;border-radius:0 0 8px 8px">
+    <div style="font-size:13px;font-weight:700;color:#CC1417;text-transform:uppercase;
+                letter-spacing:.5px;margin-bottom:16px">Por Responsável</div>
+    {people_html}
+    {sem_html}
+  </div>
+
+  <div style="text-align:center;font-size:11px;color:#bbb;margin-top:12px">
+    Gerado por bruno-ai-core/scripts/daily_report.py
+  </div>
+</div>
+</body></html>"""
+
+
+def send_email(subject: str, html: str):
     import smtplib
+    from email.mime.multipart import MIMEMultipart
     from email.mime.text import MIMEText
-    msg = MIMEText(body, "plain", "utf-8")
+
+    msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"]    = EMAIL_USER
     msg["To"]      = EMAIL_USER
+    msg.attach(MIMEText(html, "html", "utf-8"))
 
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
         smtp.login(EMAIL_USER, EMAIL_PASS)
@@ -224,7 +376,8 @@ def main():
     print(report)
 
     if args.send_email:
-        send_email(f"[P.A. Construshop] Relatório {since} → {today}", report)
+        html = build_html(since, today, git_data, redmine_data)
+        send_email(f"[P.A. Construshop] Relatório {since} → {today}", html)
 
 
 if __name__ == "__main__":

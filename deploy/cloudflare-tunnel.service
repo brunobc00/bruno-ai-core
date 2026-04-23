@@ -1,0 +1,20 @@
+[Unit]
+Description=Cloudflare Tunnel (ia.automacaobbc.com)
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+User=bruno
+ExecStartPre=-/usr/bin/docker rm -f cloudflare-tunnel
+ExecStart=/usr/bin/docker run --rm --name cloudflare-tunnel --net=host \
+    cloudflare/cloudflared:latest tunnel --no-autoupdate run \
+    --token eyJhIjoiNGMwZmI0ZjAyY2Q4N2JiMzUwZGE4YzU4ZTIyZWFjZDgiLCJ0IjoiMjBlYmY5ZDgtOTZiNS00ZmM1LWI5NjAtOTliYzQwMTQ0MDdkIiwicyI6IlpqVmhabU0xT0RRdE9ERXpOQzAwTURFNExXRXhaV1l0T1RFNFlUQmpabVUyWXpZMSJ9
+ExecStop=/usr/bin/docker stop cloudflare-tunnel
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

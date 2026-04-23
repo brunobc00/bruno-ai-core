@@ -1,0 +1,17 @@
+[Unit]
+Description=Antigravity Portal (FastAPI)
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=bruno
+WorkingDirectory=/home/bruno/Documentos/Github/bruno-ai-core
+ExecStart=/home/bruno/Documentos/Github/bruno-ai-core/.venv/bin/python server/main.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
