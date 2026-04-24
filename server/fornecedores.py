@@ -27,6 +27,30 @@ _PRICE_RE = re.compile(r'R\$\s*([\d]+\s*(?:\s[\d]+)*\s*,\s*\d{2})')
 _SKIP_TOK = frozenset({'FOTO','REF','REF.','COR','DESCRIÇÃO','OBSERVAÇÕES','PREÇO','IPI','NCM'})
 
 
+def _detect_secao(line: str) -> str | None:
+    """Detecta linhas de seção/linha-de-produto acima de grupos de itens no PDF."""
+    s = line.strip()
+    if len(s) < 8:
+        return None
+    if _PRICE_RE.search(s):
+        return None
+    if _NCM_RE.search(s):
+        return None
+    words = s.split()
+    if not words:
+        return None
+    if words[0].rstrip('.').upper() in _SKIP_TOK:
+        return None
+    # Rejeita linhas que parecem código de produto solitário (ex: "IL DW01 BM")
+    if len(words) <= 2 and all(re.match(r'^[A-Z0-9.\-/]+$', w) for w in words):
+        return None
+    # Precisa ter pelo menos uma palavra com letras minúsculas ou mista (texto descritivo)
+    has_desc = any(re.search(r'[a-záéíóúãõç]', w) for w in words)
+    if not has_desc and len(words) < 4:
+        return None
+    return s
+
+
 def _parse_pdf_price(raw: str) -> float:
     return float(re.sub(r'\s+', '', raw).replace(',', '.'))
 
@@ -43,15 +67,36 @@ def _parse_pdf_line(line: str) -> dict | None:
     ncm = ncm_match.group(0) if ncm_match else None
 
     clean = _NCM_RE.sub('', stripped)
-    m = _PRICE_RE.search(clean)
-    if not m:
+
+    # Encontra todos os preços na linha
+    all_prices = list(_PRICE_RE.finditer(clean))
+    if not all_prices:
         return None
+
+    m = all_prices[0]  # PREÇO S/IPI
     try:
         preco = _parse_pdf_price(m.group(1))
     except ValueError:
         return None
     if not (0 < preco < 100_000):
         return None
+
+    # PREÇO C/IPI (segundo preço — referência)
+    preco_cipi = None
+    if len(all_prices) >= 2:
+        try:
+            preco_cipi = _parse_pdf_price(all_prices[1].group(1))
+        except (ValueError, IndexError):
+            pass
+
+    # IPI% — padrão X,XX% após os preços (ex: 9,75%)
+    ipi_prod = None
+    ipi_pct_match = re.search(r'\b(\d+(?:,\d+)?)\s*%', clean[m.start():])
+    if ipi_pct_match:
+        try:
+            ipi_prod = float(ipi_pct_match.group(1).replace(',', '.'))
+        except ValueError:
+            pass
 
     prefix = clean[:m.start()].strip()
     words = prefix.split()
@@ -84,6 +129,8 @@ def _parse_pdf_line(line: str) -> dict | None:
         "ncm":                ncm,
         "unidade":            "un",
         "preco_base":         preco,
+        "ipi_produto":        ipi_prod,   # IPI% específico do produto no PDF
+        "preco_cipi":         preco_cipi, # preço c/ IPI listado no PDF (referência)
     }
 
 
@@ -147,6 +194,7 @@ def _p(p: ProdutoTabela) -> dict:
         "ipi":                 float(p.ipi)             if p.ipi             else None,
         "icms_entrada":        float(p.icms_entrada)    if p.icms_entrada    else None,
         "st":                  float(p.st)              if p.st              else None,
+        "linha_produto":       p.linha_produto,
         "descricao_generica":  p.descricao_generica,
         "url_produto":         p.url_produto,
         "imagens":             json.loads(p.imagens) if p.imagens else [],
@@ -496,14 +544,38 @@ async def _stream_pdf_texto_llm(arquivo_path: str):
         return
 
     count = 0
+    secao_atual = None  # header de seção acima do grupo de produtos
+    pendente: dict | None = None  # produto aguardando possível observação da linha seguinte
     for i, page_text in enumerate(pages_text):
         pct = int(10 + 75 * i / n_pages)
         yield ("status", {"msg": f"Analisando pág. {i+1}/{n_pages}...", "percent": pct})
         for line in page_text.split('\n'):
             prod = _parse_pdf_line(line)
             if prod:
-                count += 1
-                yield ("row", prod)
+                if pendente is not None:
+                    count += 1
+                    yield ("row", pendente)
+                if secao_atual:
+                    prod['linha_produto'] = secao_atual
+                pendente = prod
+            else:
+                stripped = line.strip()
+                # Captura a primeira linha sem preço após produto como observação,
+                # antes de tentar detectar seção (a seção real virá em linha seguinte)
+                if (pendente is not None
+                        and not pendente.get('observacao')
+                        and stripped
+                        and stripped.split()[0].rstrip('.').upper() not in _SKIP_TOK):
+                    pendente['observacao'] = stripped
+                else:
+                    sec = _detect_secao(line)
+                    if sec:
+                        secao_atual = sec
+        # Emite produto pendente ao fim da página
+        if pendente is not None:
+            count += 1
+            yield ("row", pendente)
+            pendente = None
         yield ("status", {"msg": f"Pág. {i+1}/{n_pages} — {count} produto(s)", "percent": pct})
         await asyncio.sleep(0)
 
@@ -823,22 +895,28 @@ def importar_tabela(fid: int, tid: int):
                 continue
             if not (0 < preco < 100_000):
                 continue
-            pd, pc = _calc(preco, desc_pct, ipi_pct, st_pct)
+            # Usa IPI/ST do produto quando definidos individualmente
+            ipi_prod = prod.get("ipi_produto")
+            st_prod  = prod.get("st_produto")
+            ipi_usar = float(ipi_prod) if ipi_prod is not None else ipi_pct
+            st_usar  = float(st_prod)  if st_prod  is not None else st_pct
+            pd, pc = _calc(preco, desc_pct, ipi_usar, st_usar)
             imgs = prod.get("imagens")
             db.add(ProdutoTabela(
                 tabela_id=tid,
                 codigo=prod.get("codigo", ""),
                 descricao=prod["descricao"],
                 descricao_completa=prod.get("descricao_completa"),
+                linha_produto=prod.get("linha_produto"),
                 observacao=prod.get("observacao"),
                 ncm=prod.get("ncm"),
                 unidade=prod.get("unidade", "un"),
                 preco_base=preco,
                 preco_desconto=pd,
                 preco_custo=pc,
-                ipi=ipi_pct,
+                ipi=ipi_usar,
                 icms_entrada=icms_val,
-                st=st_pct,
+                st=st_usar,
                 url_produto=prod.get("url_produto"),
                 imagens=json.dumps(imgs) if isinstance(imgs, list) else imgs,
             ))

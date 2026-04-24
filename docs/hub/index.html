@@ -117,6 +117,8 @@
         .td-money{text-align:right;font-family:'Fira Code',monospace;font-size:.82rem}
         .td-r{text-align:right;font-size:.82rem}
         .tp-sel td{background:rgba(31,255,140,.04)!important}
+        .rev-inp{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:4px;color:var(--text-primary);font-family:inherit;font-size:.82rem;padding:.2rem .4rem}
+        .rev-inp:focus{outline:none;border-color:rgba(31,255,140,.5);background:rgba(31,255,140,.04)}
         .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:400;display:flex;align-items:center;justify-content:center;padding:1rem}
         .modal-box{background:#0e1a14;border:1px solid var(--border-color);border-radius:16px;padding:2rem;width:100%;max-width:560px;max-height:90vh;overflow-y:auto}
         .modal-title{font-size:1.15rem;font-weight:700;margin-bottom:1.5rem}
@@ -135,18 +137,20 @@
             .form-grid{grid-template-columns:1fr}
         }
 
-        .table-wrapper { overflow-x: auto; }
+        .table-wrapper { overflow: auto; max-height: calc(100vh - 260px); }
         table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
         thead th {
             text-align: left;
-            padding: 0.8rem 1rem;
+            padding: 0.6rem 0.8rem;
             color: var(--accent-color);
             border-bottom: 1px solid var(--border-color);
-            font-size: 0.75rem;
+            font-size: 0.73rem;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            position: sticky; top: 0; z-index: 2;
+            background: #0b1510;
         }
-        tbody td { padding: 0.8rem 1rem; color: var(--text-secondary); border-bottom: 1px solid rgba(255,255,255,0.04); }
+        tbody td { padding: 0.55rem 0.8rem; color: var(--text-secondary); border-bottom: 1px solid rgba(255,255,255,0.04); }
         tbody tr:last-child td { border-bottom: none; }
         tbody tr:hover td { background: rgba(255,255,255,0.02); }
         tbody td a { color: var(--accent-color); text-decoration: none; }
@@ -2005,7 +2009,15 @@ git add . &amp;&amp; git commit -m &quot;&lt;tipo&gt;: &lt;descrição&gt;&quot;
                         <div id="tp-revisao-msg" style="font-size:.82rem;opacity:.65;margin-top:.2rem;"></div>
                     </div>
                     <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+                        <button class="btn-secondary" style="font-size:.85rem;" onclick="tpJsonToggle()">{ } JSON</button>
                         <button class="btn-primary" style="font-size:.85rem;" onclick="tpImportar()">⬆ Importar para Banco</button>
+                    </div>
+                </div>
+                <div id="tp-json-panel" style="display:none;margin-top:1rem;">
+                    <textarea id="tp-json-ta" style="width:100%;height:280px;background:rgba(0,0,0,.4);border:1px solid rgba(255,196,0,.2);border-radius:6px;color:var(--text-primary);font-family:'Fira Code',monospace;font-size:.78rem;padding:.75rem;resize:vertical;box-sizing:border-box;"></textarea>
+                    <div style="display:flex;gap:.5rem;margin-top:.5rem;">
+                        <button class="btn-primary" style="font-size:.83rem;" onclick="tpJsonSalvar()">Salvar JSON</button>
+                        <button class="btn-secondary" style="font-size:.83rem;" onclick="tpJsonToggle()">Fechar</button>
                     </div>
                 </div>
             </div>
@@ -2014,6 +2026,7 @@ git add . &amp;&amp; git commit -m &quot;&lt;tipo&gt;: &lt;descrição&gt;&quot;
                 <input class="forn-search" id="tp-busca" style="flex:1;min-width:200px;"
                        placeholder="Buscar por código, descrição ou desc. genérica..."
                        oninput="tpFiltrar()">
+                <button class="btn-secondary" style="font-size:.82rem;padding:.3rem .75rem;white-space:nowrap;" onclick="tpCopiarDebug()">📋 Copiar JSON</button>
             </div>
 
             <div class="table-wrapper">
@@ -2023,17 +2036,18 @@ git add . &amp;&amp; git commit -m &quot;&lt;tipo&gt;: &lt;descrição&gt;&quot;
                             <th style="width:32px;"><input type="checkbox" id="tp-check-all" onchange="tpSelectAll(this.checked)"></th>
                             <th>Código</th>
                             <th>Descrição</th>
-                            <th>Desc. Genérica</th>
+                            <th id="th-col4">Desc. Genérica</th>
+                            <th id="th-col5">Observação</th>
                             <th>Un.</th>
                             <th class="td-r">Base</th>
                             <th class="td-r">c/ Desc.</th>
-                            <th class="td-r" style="color:var(--accent-color);">Custo</th>
                             <th class="td-r">IPI%</th>
                             <th class="td-r">ST%</th>
+                            <th class="td-r" style="color:var(--accent-color);">Custo</th>
                         </tr>
                     </thead>
                     <tbody id="tp-tbody">
-                        <tr><td colspan="10" style="text-align:center;color:var(--text-secondary);">Nenhum produto.</td></tr>
+                        <tr><td colspan="11" style="text-align:center;color:var(--text-secondary);">Nenhum produto.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -2892,6 +2906,9 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
         let _upFile   = null;
         let _upRows   = [];
         let _upTabId  = null;
+        let _tpModo   = 'normal'; // 'normal' | 'revisao'
+        let _tpRevFid = null;
+        let _tpRevParams = {desconto:0, ipi:0, st:0};
 
         // ── API helper — sempre lança erro específico ──────────────────
 
@@ -3188,11 +3205,8 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
                         return;
                     }
                     if (d.done) {
-                        document.getElementById('tp-prog-fill').style.width = '100%';
-                        document.getElementById('tp-prog-msg').textContent = d.msg || `${_tpRows.length} produto(s) extraídos.`;
-                        document.getElementById('tp-btn-pausar').style.display = 'none';
-                        document.getElementById('tp-btn-continuar').style.display = 'none';
-                        document.getElementById('tp-btn-importar').style.display = '';
+                        // Transiciona direto para tela de revisão
+                        await tpAbrirRevisao(fid, tid);
                         return;
                     }
                     _activePollTimer = setTimeout(poll, 2000);
@@ -3204,20 +3218,33 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
         }
 
         async function tpImportar() {
-            if (!_forAtual || !_upTabId) return;
-            document.getElementById('tp-btn-importar').disabled = true;
-            document.getElementById('tp-prog-msg').textContent = 'Importando para o banco...';
+            const fid = _tpRevFid || _forAtual?.id;
+            if (!fid || !_upTabId) return;
+            document.querySelectorAll('#tp-btn-importar').forEach(b => b.disabled=true);
+            // Em modo revisão: persiste edits antes de importar
+            if (_tpModo === 'revisao') {
+                try {
+                    const prods = _tpRows.map(p => { const {_idx,...r}=p; return r; });
+                    await apiFetch('/api/fornecedores/'+fid+'/tabelas/'+_upTabId+'/review', {
+                        method:'PUT', headers:{'Content-Type':'application/json'},
+                        body: JSON.stringify({produtos: prods})
+                    });
+                } catch(e) {
+                    showToast('Erro ao salvar revisão: '+e.message,'error');
+                    document.querySelectorAll('#tp-btn-importar').forEach(b => b.disabled=false);
+                    return;
+                }
+            }
             try {
-                const r = await fetch('/api/fornecedores/'+_forAtual.id+'/tabelas/'+_upTabId+'/importar', {method:'POST'});
-                if (!r.ok) throw new Error((await r.json()).detail || r.status);
-                const d = await r.json();
+                const d = await apiFetch('/api/fornecedores/'+fid+'/tabelas/'+_upTabId+'/importar', {method:'POST'});
                 showToast(`${d.total} produto(s) importados com sucesso!`);
                 document.getElementById('tp-proc-header').style.display = 'none';
                 document.getElementById('tp-revisao-header').style.display = 'none';
-                await tabIrGlobal(_forAtual.id, _upTabId);
+                _tpModo = 'normal';
+                await tabIrGlobal(fid, _upTabId);
             } catch(e) {
                 showToast('Erro ao importar: '+e.message, 'error');
-                document.getElementById('tp-btn-importar').disabled = false;
+                document.querySelectorAll('#tp-btn-importar').forEach(b => b.disabled=false);
             }
         }
 
@@ -3232,11 +3259,14 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
             try {
                 review = await apiFetch('/api/fornecedores/'+fid+'/tabelas/'+tid+'/review');
             } catch(e) {
-                // Se não tem review.json, trata como tabela normal
                 await tabIrGlobal(fid, tid); return;
             }
 
-            _tpRows = review.produtos || [];
+            _tpModo = 'revisao';
+            _tpRevFid = fid;
+            _tpRevParams = {desconto: review.desconto||0, ipi: review.ipi||0, st: review.st||0};
+            _tpRows = (review.produtos || []).map((p, i) => ({...p, _idx: i}));
+
             document.getElementById('tp-breadcrumb').innerHTML =
                 `<a onclick="showPage('fornecedores')">Fornecedores</a><span>/</span><a onclick="showPage('fornecedor')">${esc(_forAtual.nome)}</a><span>/</span><span>${esc(review.arquivo||'Revisão')}</span>`;
             document.getElementById('tp-titulo').textContent = review.arquivo || 'Revisão';
@@ -3246,9 +3276,12 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
             document.getElementById('tp-proc-header').style.display = 'none';
             document.getElementById('tp-upload-form').style.display = 'none';
             document.getElementById('tp-btn-download').style.display = 'none';
+            document.getElementById('tp-json-panel').style.display = 'none';
+            document.getElementById('th-col4').textContent = 'Linha do Produto';
+            document.getElementById('th-col5').textContent = 'Observação';
             document.getElementById('tp-revisao-header').style.display = '';
             document.getElementById('tp-revisao-msg').textContent =
-                `${_tpRows.length} produto(s) extraídos — revise e clique "Importar para Banco" para salvar.`;
+                `${_tpRows.length} produto(s) extraídos — edite as células e clique "Importar para Banco" para salvar.`;
             tpFiltrar();
             showPage('tabela-produtos');
         }
@@ -3335,6 +3368,9 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
         // ── Tabela Produtos ────────────────────────────────────────────
 
         async function tabIrGlobal(fid, tid) {
+            _tpModo = 'normal';
+            document.getElementById('th-col4').textContent = 'Desc. Genérica';
+            document.getElementById('th-col5').textContent = 'Linha / Obs.';
             try {
                 if (!_forAtual || _forAtual.id !== fid) {
                     _forAtual = await apiFetch('/api/fornecedores/'+fid);
@@ -3369,14 +3405,14 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
             document.getElementById('tp-titulo').textContent='Catálogo';
             document.getElementById('tp-subtitulo').textContent='Todos os fornecedores';
             document.getElementById('tp-busca').value='';
-            document.getElementById('tp-tbody').innerHTML='<tr><td colspan="10" style="text-align:center;color:var(--text-secondary);">Carregando...</td></tr>';
+            document.getElementById('tp-tbody').innerHTML='<tr><td colspan="11" style="text-align:center;color:var(--text-secondary);">Carregando...</td></tr>';
             showPage('tabela-produtos');
             try {
                 _tpRows = await apiFetch('/api/produtos');
                 tpFiltrar();
             } catch(e) {
                 document.getElementById('tp-tbody').innerHTML =
-                    `<tr><td colspan="10" style="color:#ff5050;font-size:.83rem;">${esc(e.message)}</td></tr>`;
+                    `<tr><td colspan="11" style="color:#ff5050;font-size:.83rem;">${esc(e.message)}</td></tr>`;
             }
         }
 
@@ -3391,21 +3427,137 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
         }
 
         function tpRender(rows) {
+            if (_tpModo === 'revisao') { tpRenderRevisao(rows); return; }
             const tbody = document.getElementById('tp-tbody');
-            if (!rows.length) { tbody.innerHTML='<tr><td colspan="10" style="text-align:center;color:var(--text-secondary);">Nenhum produto.</td></tr>'; return; }
+            if (!rows.length) { tbody.innerHTML='<tr><td colspan="11" style="text-align:center;color:var(--text-secondary);">Nenhum produto.</td></tr>'; return; }
             tbody.innerHTML = rows.map(p => `
                 <tr id="tp-r-${p.id}" class="${_tpSel.has(p.id)?'tp-sel':''}">
                     <td><input type="checkbox" ${_tpSel.has(p.id)?'checked':''} onchange="tpToggle(${p.id},this.checked)"></td>
-                    <td class="td-code">${esc(p.codigo||'—')}</td>
+                    <td class="td-code">${esc(p.codigo||'—')}${p.ncm?`<br><span style="font-size:.67rem;opacity:.4;">${esc(p.ncm)}</span>`:''}
+                    </td>
                     <td style="font-size:.83rem;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${esc(p.descricao||'')}">${esc(p.descricao||'')}</td>
-                    <td style="min-width:130px;"><input class="prod-generica" value="${esc(p.descricao_generica||'')}" placeholder="—" data-id="${p.id}" onchange="tpSalvarGenerica(${p.id},this.value)" onfocus="tpToggle(${p.id},true)"></td>
+                    <td style="min-width:110px;"><input class="prod-generica" value="${esc(p.descricao_generica||'')}" placeholder="—" data-id="${p.id}" onchange="tpSalvarGenerica(${p.id},this.value)" onfocus="tpToggle(${p.id},true)"></td>
+                    <td style="font-size:.78rem;max-width:160px;color:var(--text-secondary);" title="${esc((p.linha_produto||'')+(p.observacao?'\n'+p.observacao:''))}">
+                        ${p.linha_produto ? `<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(p.linha_produto)}</div>` : ''}
+                        ${p.observacao ? `<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--accent-color);font-size:.72rem;">${esc(p.observacao)}</div>` : ''}
+                        ${!p.linha_produto && !p.observacao ? '—' : ''}
+                    </td>
                     <td style="font-size:.82rem;">${esc(p.unidade||'—')}</td>
                     <td class="td-money">${fmtBRL(p.preco_base)}</td>
                     <td class="td-money">${fmtBRL(p.preco_desconto)}</td>
-                    <td class="td-money" style="color:var(--accent-color);font-weight:600;">${fmtBRL(p.preco_custo)}</td>
                     <td class="td-r">${p.ipi??'—'}</td>
                     <td class="td-r">${p.st??'—'}</td>
+                    <td class="td-money" style="color:var(--accent-color);font-weight:600;">${fmtBRL(p.preco_custo)}</td>
                 </tr>`).join('');
+        }
+
+        function _revCalc(p) {
+            const {desconto, ipi: ipiG, st: stG} = _tpRevParams;
+            const base = parseFloat(p.preco_base) || 0;
+            const ipi  = p.ipi_produto != null ? parseFloat(p.ipi_produto) : ipiG;
+            const st   = p.st_produto  != null ? parseFloat(p.st_produto)  : stG;
+            const pd   = base > 0 ? base * (1 - desconto/100) : null;
+            const pc   = pd   != null ? pd * (1 + ipi/100) * (1 + st/100) : null;
+            return {base, ipi, st, pd, pc};
+        }
+
+        function tpRenderRevisao(rows) {
+            const tbody = document.getElementById('tp-tbody');
+            if (!rows.length) { tbody.innerHTML='<tr><td colspan="11" style="text-align:center;color:var(--text-secondary);">Nenhum produto.</td></tr>'; return; }
+            tbody.innerHTML = rows.map(p => {
+                const idx = p._idx;
+                const {base, ipi, st, pd, pc} = _revCalc(p);
+                const ipiStyle = p.ipi_produto != null ? 'color:var(--accent-color)' : '';
+                return `<tr>
+                    <td></td>
+                    <td class="td-code">
+                        <input class="rev-inp td-code" style="width:90px;" value="${esc(p.codigo||'')}"
+                            onchange="tpRevEdit(${idx},'codigo',this.value)">
+                        ${p.ncm?`<br><span style="font-size:.67rem;opacity:.4;">${esc(p.ncm)}</span>`:''}
+                    </td>
+                    <td><input class="rev-inp" style="width:195px;font-size:.83rem;" value="${esc(p.descricao||'')}"
+                        onchange="tpRevEdit(${idx},'descricao',this.value)"></td>
+                    <td><input class="rev-inp" style="width:140px;font-size:.78rem;" value="${esc(p.linha_produto||'')}"
+                        placeholder="—" onchange="tpRevEdit(${idx},'linha_produto',this.value)"></td>
+                    <td><textarea class="rev-inp" style="width:130px;height:34px;resize:none;font-size:.78rem;"
+                        placeholder="—" onchange="tpRevEdit(${idx},'observacao',this.value)">${esc(p.observacao||'')}</textarea></td>
+                    <td><input class="rev-inp" style="width:36px;" value="${esc(p.unidade||'un')}"
+                        onchange="tpRevEdit(${idx},'unidade',this.value)"></td>
+                    <td class="td-money"><input class="rev-inp" style="width:72px;text-align:right;"
+                        value="${base > 0 ? base.toFixed(2) : ''}"
+                        onchange="tpRevEditPreco(${idx},this.value)"></td>
+                    <td class="td-money" id="rev-pd-${idx}">${pd!=null?fmtBRL(pd):'—'}</td>
+                    <td class="td-r"><input class="rev-inp" style="width:42px;text-align:right;${ipiStyle}"
+                        value="${ipi}" onchange="tpRevEditIpiSt(${idx},'ipi_produto',this.value)"></td>
+                    <td class="td-r"><input class="rev-inp" style="width:42px;text-align:right;"
+                        value="${st}" onchange="tpRevEditIpiSt(${idx},'st_produto',this.value)"></td>
+                    <td class="td-money" style="color:var(--accent-color);font-weight:600;" id="rev-pc-${idx}">${pc!=null?fmtBRL(pc):'—'}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function tpRevEdit(idx, campo, valor) {
+            if (_tpRows[idx] !== undefined) _tpRows[idx][campo] = valor;
+        }
+
+        function tpRevEditIpiSt(idx, campo, valor) {
+            const v = parseFloat(String(valor).replace(',','.'));
+            if (_tpRows[idx] !== undefined) _tpRows[idx][campo] = isNaN(v) ? null : v;
+            _tpRevUpdateRow(idx);
+        }
+
+        function _tpRevUpdateRow(idx) {
+            const p = _tpRows[idx];
+            if (!p) return;
+            const {pd, pc} = _revCalc(p);
+            const pdEl = document.getElementById('rev-pd-'+idx);
+            const pcEl = document.getElementById('rev-pc-'+idx);
+            if (pdEl) pdEl.textContent = pd!=null ? fmtBRL(pd) : '—';
+            if (pcEl) pcEl.textContent = pc!=null ? fmtBRL(pc) : '—';
+        }
+
+        function tpRevEditPreco(idx, valor) {
+            const preco = parseFloat(String(valor).replace(',','.')) || 0;
+            if (_tpRows[idx] !== undefined) _tpRows[idx]['preco_base'] = preco;
+            _tpRevUpdateRow(idx);
+        }
+
+        function tpCopiarDebug() {
+            if (!_tpRows || !_tpRows.length) { showToast('Nenhum dado carregado', 'error'); return; }
+            const data = _tpRows.map(p => { const {_idx,...r}=p; return r; });
+            const txt = JSON.stringify(data, null, 2);
+            navigator.clipboard.writeText(txt)
+                .then(() => showToast(`JSON copiado — ${data.length} produto(s)`, 'success'))
+                .catch(() => { prompt('Copie o JSON abaixo:', txt); });
+        }
+
+        function tpJsonToggle() {
+            const panel = document.getElementById('tp-json-panel');
+            if (panel.style.display !== 'none') { panel.style.display='none'; return; }
+            const data = _tpRows.map(p => { const {_idx,...r}=p; return r; });
+            document.getElementById('tp-json-ta').value = JSON.stringify(data, null, 2);
+            panel.style.display = '';
+        }
+
+        async function tpJsonSalvar() {
+            const ta = document.getElementById('tp-json-ta');
+            let parsed;
+            try {
+                parsed = JSON.parse(ta.value);
+                if (!Array.isArray(parsed)) throw new Error('Deve ser um array JSON');
+            } catch(e) { showToast('JSON inválido: '+e.message,'error'); return; }
+            try {
+                await apiFetch('/api/fornecedores/'+_tpRevFid+'/tabelas/'+_upTabId+'/review', {
+                    method:'PUT', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({produtos: parsed})
+                });
+                _tpRows = parsed.map((p,i) => ({...p, _idx:i}));
+                document.getElementById('tp-json-panel').style.display = 'none';
+                document.getElementById('tp-revisao-msg').textContent =
+                    `${_tpRows.length} produto(s) — JSON salvo.`;
+                tpFiltrar();
+                showToast('JSON salvo.');
+            } catch(e) { showToast('Erro ao salvar: '+e.message,'error'); }
         }
 
         function tpToggle(id, checked) {
