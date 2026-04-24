@@ -37,6 +37,11 @@ def _parse_pdf_line(line: str) -> dict | None:
         return None
     if stripped.split()[0].rstrip('.').upper() in _SKIP_TOK:
         return None
+
+    # Captura NCM antes de remover
+    ncm_match = _NCM_RE.search(stripped)
+    ncm = ncm_match.group(0) if ncm_match else None
+
     clean = _NCM_RE.sub('', stripped)
     m = _PRICE_RE.search(clean)
     if not m:
@@ -47,6 +52,7 @@ def _parse_pdf_line(line: str) -> dict | None:
         return None
     if not (0 < preco < 100_000):
         return None
+
     prefix = clean[:m.start()].strip()
     words = prefix.split()
     if not words:
@@ -70,11 +76,14 @@ def _parse_pdf_line(line: str) -> dict | None:
             ref_words, desc_words = [words[0]], words[1:]
         codigo = ' '.join(ref_words)
         desc   = ' '.join(desc_words).strip()
+
     return {
-        "codigo":    codigo,
-        "descricao": (desc or codigo)[:300],
-        "unidade":   "un",
-        "preco_base": preco,
+        "codigo":             codigo,
+        "descricao":          (desc or codigo)[:200],
+        "descricao_completa": desc if len(desc) > 200 else None,
+        "ncm":                ncm,
+        "unidade":            "un",
+        "preco_base":         preco,
     }
 
 
@@ -125,17 +134,22 @@ def _t(t: TabelaPreco, com_produtos: bool = False) -> dict:
 
 def _p(p: ProdutoTabela) -> dict:
     return {
-        "id":             p.id,
-        "codigo":         p.codigo,
-        "descricao":      p.descricao,
-        "unidade":        p.unidade,
-        "preco_base":     float(p.preco_base)     if p.preco_base     else None,
-        "preco_desconto": float(p.preco_desconto) if p.preco_desconto else None,
-        "preco_custo":    float(p.preco_custo)    if p.preco_custo    else None,
-        "ipi":               float(p.ipi)            if p.ipi            else None,
-        "icms_entrada":      float(p.icms_entrada)   if p.icms_entrada   else None,
-        "st":                float(p.st)             if p.st             else None,
-        "descricao_generica": p.descricao_generica,
+        "id":                  p.id,
+        "codigo":              p.codigo,
+        "descricao":           p.descricao,
+        "descricao_completa":  p.descricao_completa,
+        "observacao":          p.observacao,
+        "ncm":                 p.ncm,
+        "unidade":             p.unidade,
+        "preco_base":          float(p.preco_base)      if p.preco_base      else None,
+        "preco_desconto":      float(p.preco_desconto)  if p.preco_desconto  else None,
+        "preco_custo":         float(p.preco_custo)     if p.preco_custo     else None,
+        "ipi":                 float(p.ipi)             if p.ipi             else None,
+        "icms_entrada":        float(p.icms_entrada)    if p.icms_entrada    else None,
+        "st":                  float(p.st)              if p.st              else None,
+        "descricao_generica":  p.descricao_generica,
+        "url_produto":         p.url_produto,
+        "imagens":             json.loads(p.imagens) if p.imagens else [],
     }
 
 
@@ -810,10 +824,14 @@ def importar_tabela(fid: int, tid: int):
             if not (0 < preco < 100_000):
                 continue
             pd, pc = _calc(preco, desc_pct, ipi_pct, st_pct)
+            imgs = prod.get("imagens")
             db.add(ProdutoTabela(
                 tabela_id=tid,
                 codigo=prod.get("codigo", ""),
                 descricao=prod["descricao"],
+                descricao_completa=prod.get("descricao_completa"),
+                observacao=prod.get("observacao"),
+                ncm=prod.get("ncm"),
                 unidade=prod.get("unidade", "un"),
                 preco_base=preco,
                 preco_desconto=pd,
@@ -821,6 +839,8 @@ def importar_tabela(fid: int, tid: int):
                 ipi=ipi_pct,
                 icms_entrada=icms_val,
                 st=st_pct,
+                url_produto=prod.get("url_produto"),
+                imagens=json.dumps(imgs) if isinstance(imgs, list) else imgs,
             ))
             count += 1
         t.status = "processado"
