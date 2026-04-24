@@ -643,10 +643,12 @@ async def _run_job(tid: int, arquivo_path: str, arquivo_tipo: str):
         for p in t.produtos:
             db.delete(p)
         db.commit()
-        desc_pct = float(t.desconto   or 0)
-        ipi_pct  = float(t.ipi        or 0)
-        icms_val = float(t.icms_entrada or 0)
-        st_pct   = float(t.st         or 0)
+        fid      = t.fornecedor_id
+        arq_nome = t.arquivo_nome or ""
+        desc_pct = float(t.desconto      or 0)
+        ipi_pct  = float(t.ipi           or 0)
+        icms_val = float(t.icms_entrada  or 0)
+        st_pct   = float(t.st            or 0)
 
     def _fail(msg: str):
         job["error"] = msg
@@ -655,30 +657,6 @@ async def _run_job(tid: int, arquivo_path: str, arquivo_tipo: str):
         with get_session() as db:
             t = db.get(TabelaPreco, tid)
             if t: t.status = "erro"; db.commit()
-
-    def _save_row(data: dict):
-        """Salva produto no banco imediatamente e adiciona à memória."""
-        try:
-            pd, pc = _calc(data["preco_base"], desc_pct, ipi_pct, st_pct)
-            with get_session() as db:
-                db.add(ProdutoTabela(
-                    tabela_id=tid,
-                    codigo=data.get("codigo", ""),
-                    descricao=data["descricao"],
-                    unidade=data.get("unidade", "un"),
-                    preco_base=data["preco_base"],
-                    preco_desconto=pd,
-                    preco_custo=pc,
-                    ipi=ipi_pct,
-                    icms_entrada=icms_val,
-                    st=st_pct,
-                ))
-                db.commit()
-            job["rows"].append(data)
-            if len(job["rows"]) % 10 == 0:
-                print(f"[JOB] tid={tid} {len(job['rows'])} produto(s) salvos...")
-        except Exception as e:
-            print(f"[JOB] tid={tid} erro ao salvar produto: {e}")
 
     _set(0, "Iniciando...")
 
@@ -695,7 +673,7 @@ async def _run_job(tid: int, arquivo_path: str, arquivo_tipo: str):
             async for ev, data in _stream_pdf_texto_llm(arquivo_path):
                 if ev == "row":
                     rows_found = True
-                    _save_row(data)
+                    job["rows"].append(data)
                 elif ev == "status":
                     _set(data.get("percent"), data.get("msg"))
                 elif ev == "empty":
@@ -718,7 +696,7 @@ async def _run_job(tid: int, arquivo_path: str, arquivo_tipo: str):
         if gen:
             async for ev, data in gen:
                 if ev == "row":
-                    _save_row(data)
+                    job["rows"].append(data)
                 elif ev == "status":
                     _set(data.get("percent"), data.get("msg"))
                 elif ev == "error":
@@ -732,12 +710,26 @@ async def _run_job(tid: int, arquivo_path: str, arquivo_tipo: str):
         _fail(msg); return
 
     total = len(job["rows"])
-    print(f"[JOB] tid={tid} CONCLUÍDO — {total} produto(s) salvos no banco")
-    _set(100, f"Concluído — {total} produto(s).")
+    print(f"[JOB] tid={tid} EXTRAÍDO — {total} produto(s), aguardando revisão")
+    _set(100, f"Aguardando revisão — {total} produto(s) extraídos.")
     job["done"] = True
+
+    # Salva arquivo de revisão (não vai para o banco ainda)
+    review_path = UPLOADS_DIR / str(fid) / f"{tid}_review.json"
+    review_path.parent.mkdir(parents=True, exist_ok=True)
+    review_path.write_text(json.dumps({
+        "tabela_id":   tid,
+        "arquivo":     arq_nome,
+        "desconto":    desc_pct,
+        "ipi":         ipi_pct,
+        "icms_entrada": icms_val,
+        "st":          st_pct,
+        "produtos":    job["rows"],
+    }, ensure_ascii=False, indent=2))
+
     with get_session() as db:
         t = db.get(TabelaPreco, tid)
-        if t: t.status = "processado"; db.commit()
+        if t: t.status = "revisao"; db.commit()
 
 
 @router.post("/{fid}/tabelas/{tid}/processar", status_code=202)
@@ -755,6 +747,86 @@ async def iniciar_processamento(fid: int, tid: int):
     _jobs[tid] = {"percent": 0, "msg": "Aguardando...", "rows": [], "done": False, "error": None}
     asyncio.create_task(_run_job(tid, arquivo_path, arquivo_tipo))
     return {"ok": True, "tid": tid}
+
+
+@router.get("/{fid}/tabelas/{tid}/review")
+def get_review(fid: int, tid: int):
+    with get_session() as db:
+        t = db.get(TabelaPreco, tid)
+        if not t or t.fornecedor_id != fid:
+            raise HTTPException(404, "Tabela não encontrada")
+        fid_real = t.fornecedor_id
+    review_path = UPLOADS_DIR / str(fid_real) / f"{tid}_review.json"
+    if not review_path.exists():
+        raise HTTPException(404, "Revisão não disponível")
+    return json.loads(review_path.read_text())
+
+
+class _ReviewBody(BaseModel):
+    produtos: list[dict]
+
+
+@router.put("/{fid}/tabelas/{tid}/review")
+def put_review(fid: int, tid: int, body: _ReviewBody):
+    with get_session() as db:
+        t = db.get(TabelaPreco, tid)
+        if not t or t.fornecedor_id != fid:
+            raise HTTPException(404)
+        fid_real = t.fornecedor_id
+    review_path = UPLOADS_DIR / str(fid_real) / f"{tid}_review.json"
+    if not review_path.exists():
+        raise HTTPException(404, "Revisão não disponível")
+    data = json.loads(review_path.read_text())
+    data["produtos"] = body.produtos
+    review_path.write_text(json.dumps(data, ensure_ascii=False, indent=2))
+    return {"ok": True, "total": len(body.produtos)}
+
+
+@router.post("/{fid}/tabelas/{tid}/importar", status_code=200)
+def importar_tabela(fid: int, tid: int):
+    with get_session() as db:
+        t = db.get(TabelaPreco, tid)
+        if not t or t.fornecedor_id != fid:
+            raise HTTPException(404)
+        review_path = UPLOADS_DIR / str(t.fornecedor_id) / f"{tid}_review.json"
+        if not review_path.exists():
+            raise HTTPException(400, "Nenhuma extração pendente para importar")
+        data     = json.loads(review_path.read_text())
+        desc_pct = float(t.desconto      or 0)
+        ipi_pct  = float(t.ipi           or 0)
+        icms_val = float(t.icms_entrada  or 0)
+        st_pct   = float(t.st            or 0)
+        for p in t.produtos:
+            db.delete(p)
+        count = 0
+        for prod in data.get("produtos", []):
+            raw = prod.get("preco_base")
+            if not prod.get("descricao") or raw is None:
+                continue
+            try:
+                preco = float(str(raw).replace(",", "."))
+            except (ValueError, TypeError):
+                continue
+            if not (0 < preco < 100_000):
+                continue
+            pd, pc = _calc(preco, desc_pct, ipi_pct, st_pct)
+            db.add(ProdutoTabela(
+                tabela_id=tid,
+                codigo=prod.get("codigo", ""),
+                descricao=prod["descricao"],
+                unidade=prod.get("unidade", "un"),
+                preco_base=preco,
+                preco_desconto=pd,
+                preco_custo=pc,
+                ipi=ipi_pct,
+                icms_entrada=icms_val,
+                st=st_pct,
+            ))
+            count += 1
+        t.status = "processado"
+        db.commit()
+    print(f"[IMPORTAR] tid={tid} — {count} produto(s) importados para o banco")
+    return {"ok": True, "total": count}
 
 
 @router.get("/{fid}/tabelas/{tid}/progresso")

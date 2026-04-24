@@ -1989,11 +1989,25 @@ git add . &amp;&amp; git commit -m &quot;&lt;tipo&gt;: &lt;descrição&gt;&quot;
                     <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
                         <button id="tp-btn-pausar" class="btn-secondary" style="padding:.3rem .75rem;font-size:.82rem;" onclick="tpPausar()">⏸ Pausar</button>
                         <button id="tp-btn-continuar" class="btn-secondary" style="padding:.3rem .75rem;font-size:.82rem;display:none;" onclick="tpContinuar()">▶ Continuar</button>
+                        <button id="tp-btn-importar" class="btn-primary" style="padding:.3rem .75rem;font-size:.82rem;display:none;" onclick="tpImportar()">⬆ Importar para Banco</button>
                         <button class="btn-secondary" style="padding:.3rem .75rem;font-size:.82rem;color:#ff6b6b;" onclick="cancelarProcessamento()">✕ Cancelar</button>
                     </div>
                 </div>
                 <div class="progress-bar"><div class="progress-fill" id="tp-prog-fill"></div></div>
                 <div class="progress-msg" id="tp-prog-msg" style="margin-top:.4rem;font-size:.83rem;"></div>
+            </div>
+
+            <!-- ── Banner de revisão (tabela já extraída, aguardando importação) ── -->
+            <div id="tp-revisao-header" style="display:none;margin-bottom:1.5rem;background:rgba(255,196,0,.04);border:1px solid rgba(255,196,0,.22);border-radius:8px;padding:1rem;">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.75rem;">
+                    <div>
+                        <div style="font-size:.88rem;font-weight:600;color:#ffc400;">Aguardando revisão</div>
+                        <div id="tp-revisao-msg" style="font-size:.82rem;opacity:.65;margin-top:.2rem;"></div>
+                    </div>
+                    <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+                        <button class="btn-primary" style="font-size:.85rem;" onclick="tpImportar()">⬆ Importar para Banco</button>
+                    </div>
+                </div>
             </div>
 
             <div class="tp-toolbar">
@@ -2900,7 +2914,7 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
             return 'R$ ' + Number(v).toLocaleString('pt-BR', {minimumFractionDigits:2,maximumFractionDigits:2});
         }
         function fmtChip(s) {
-            const m = {aguardando:['chip chip-wait','Aguardando'],processando:['chip chip-proc','Processando'],processado:['chip chip-ok','Concluído'],erro:['chip chip-err','Erro']};
+            const m = {aguardando:['chip chip-wait','Aguardando'],processando:['chip chip-proc','Processando'],revisao:['chip chip-wait','Revisão'],processado:['chip chip-ok','Concluído'],erro:['chip chip-err','Erro']};
             const [c,l] = m[s]||['chip',s||'—'];
             return `<span class="${c}">${l}</span>`;
         }
@@ -3027,6 +3041,8 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
                 let onclick = '';
                 if (t.status === 'processado' && t.total_produtos > 0)
                     onclick = `onclick="tabIrGlobal(${fid},${t.id})"`;
+                else if (t.status === 'revisao')
+                    onclick = `onclick="tpAbrirRevisao(${fid},${t.id})"`;
                 else if (t.status === 'processando')
                     onclick = `onclick="tabIrProcessando(${fid},${t.id})"`;
                 else if (t.status === 'aguardando')
@@ -3045,6 +3061,7 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
                            style="font-size:.85rem;color:var(--text-secondary);text-decoration:none;margin-right:.4rem;"
                            download>⬇</a>
                         ${t.status==='processado'&&t.total_produtos>0?`<button class="btn-secondary" style="padding:.3rem .6rem;font-size:.76rem;" onclick="tabIrGlobal(${fid},${t.id})">Ver</button>`:''}
+                        ${t.status==='revisao'?`<button class="btn-primary" style="padding:.3rem .6rem;font-size:.76rem;" onclick="tpAbrirRevisao(${fid},${t.id})">Revisar</button>`:''}
                     </td>
                 </tr>`;
             }).join('');
@@ -3172,15 +3189,10 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
                     }
                     if (d.done) {
                         document.getElementById('tp-prog-fill').style.width = '100%';
-                        document.getElementById('tp-prog-msg').textContent = `Concluído — ${_tpRows.length} produto(s) salvos.`;
+                        document.getElementById('tp-prog-msg').textContent = d.msg || `${_tpRows.length} produto(s) extraídos.`;
                         document.getElementById('tp-btn-pausar').style.display = 'none';
                         document.getElementById('tp-btn-continuar').style.display = 'none';
-                        // Show download link if tabela_id known
-                        if (_forAtual && _upTabId) {
-                            const dl = document.getElementById('tp-btn-download');
-                            dl.href = '/api/fornecedores/'+_forAtual.id+'/tabelas/'+_upTabId+'/arquivo';
-                            dl.style.display = '';
-                        }
+                        document.getElementById('tp-btn-importar').style.display = '';
                         return;
                     }
                     _activePollTimer = setTimeout(poll, 2000);
@@ -3189,6 +3201,56 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
                 }
             };
             _activePollTimer = setTimeout(poll, 800);
+        }
+
+        async function tpImportar() {
+            if (!_forAtual || !_upTabId) return;
+            document.getElementById('tp-btn-importar').disabled = true;
+            document.getElementById('tp-prog-msg').textContent = 'Importando para o banco...';
+            try {
+                const r = await fetch('/api/fornecedores/'+_forAtual.id+'/tabelas/'+_upTabId+'/importar', {method:'POST'});
+                if (!r.ok) throw new Error((await r.json()).detail || r.status);
+                const d = await r.json();
+                showToast(`${d.total} produto(s) importados com sucesso!`);
+                document.getElementById('tp-proc-header').style.display = 'none';
+                document.getElementById('tp-revisao-header').style.display = 'none';
+                await tabIrGlobal(_forAtual.id, _upTabId);
+            } catch(e) {
+                showToast('Erro ao importar: '+e.message, 'error');
+                document.getElementById('tp-btn-importar').disabled = false;
+            }
+        }
+
+        async function tpAbrirRevisao(fid, tid) {
+            if (!_forAtual || _forAtual.id !== fid) {
+                try { _forAtual = await apiFetch('/api/fornecedores/'+fid); } catch(e) { showToast(e.message,'error'); return; }
+            }
+            _upTabId = tid;
+            _tpRows = []; _tpSel = new Set();
+
+            let review;
+            try {
+                review = await apiFetch('/api/fornecedores/'+fid+'/tabelas/'+tid+'/review');
+            } catch(e) {
+                // Se não tem review.json, trata como tabela normal
+                await tabIrGlobal(fid, tid); return;
+            }
+
+            _tpRows = review.produtos || [];
+            document.getElementById('tp-breadcrumb').innerHTML =
+                `<a onclick="showPage('fornecedores')">Fornecedores</a><span>/</span><a onclick="showPage('fornecedor')">${esc(_forAtual.nome)}</a><span>/</span><span>${esc(review.arquivo||'Revisão')}</span>`;
+            document.getElementById('tp-titulo').textContent = review.arquivo || 'Revisão';
+            document.getElementById('tp-subtitulo').textContent =
+                `${_forAtual.nome} — Desc: ${review.desconto}% | IPI: ${review.ipi}% | ST: ${review.st}%`;
+            document.getElementById('tp-busca').value = '';
+            document.getElementById('tp-proc-header').style.display = 'none';
+            document.getElementById('tp-upload-form').style.display = 'none';
+            document.getElementById('tp-btn-download').style.display = 'none';
+            document.getElementById('tp-revisao-header').style.display = '';
+            document.getElementById('tp-revisao-msg').textContent =
+                `${_tpRows.length} produto(s) extraídos — revise e clique "Importar para Banco" para salvar.`;
+            tpFiltrar();
+            showPage('tabela-produtos');
         }
 
         function tpPausar() {
@@ -3292,9 +3354,10 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
                 dl.href = '/api/fornecedores/'+fid+'/tabelas/'+tid+'/arquivo';
                 dl.download = tabela.arquivo_nome || 'tabela';
                 dl.style.display = '';
-                // Esconde UI de processamento
+                // Esconde UI de processamento e revisão
                 document.getElementById('tp-proc-header').style.display = 'none';
                 document.getElementById('tp-upload-form').style.display = 'none';
+                document.getElementById('tp-revisao-header').style.display = 'none';
                 tpFiltrar();
                 showPage('tabela-produtos');
             } catch(e) { showToast(e.message, 'error'); }
