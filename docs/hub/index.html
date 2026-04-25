@@ -640,6 +640,7 @@
             <li class="nav-label">Referência</li>
             <li><a href="#normas" class="nav-item">📚 Normas CEMIG</a></li>
         </ul>
+        <div class="sidebar-user" id="sidebar-user-area"></div>
     </nav>
 
     <main class="main-content">
@@ -1714,13 +1715,13 @@ git add . &amp;&amp; git commit -m &quot;&lt;tipo&gt;: &lt;descrição&gt;&quot;
                 <p class="subtitle">Leia uma planilha Google Sheets, revise a tabela pivot e exporte o PDF.</p>
             </header>
 
-            <!-- Login gate -->
+            <!-- Login gate (fallback — só aparece se o OAuth falhar) -->
             <div id="orc-login-gate" style="display:none;">
                 <div class="orc-connect-box">
-                    <p>Conecte sua conta Google para acessar suas planilhas.</p>
-                    <a href="/api/auth/google" class="btn-google">
+                    <p>Não foi possível autenticar automaticamente.</p>
+                    <a href="/api/auth/google" class="btn-google" onclick="sessionStorage.removeItem('orc_auth_tried')">
                         <img src="https://www.google.com/favicon.ico" alt="G">
-                        Entrar com Google
+                        Tentar novamente
                     </a>
                 </div>
             </div>
@@ -2090,7 +2091,7 @@ git add . &amp;&amp; git commit -m &quot;&lt;tipo&gt;: &lt;descrição&gt;&quot;
                     _usersLoaded = true;
                     loadAllUsers();
                 }
-                if (pageId === 'orcamentos') orcCheckAuth();
+                if (pageId === 'orcamentos') { checkGlobalAuth(); orcCheckAuth(); }
             });
         });
 
@@ -2105,7 +2106,9 @@ git add . &amp;&amp; git commit -m &quot;&lt;tipo&gt;: &lt;descrição&gt;&quot;
                 _usersLoaded = true;
                 loadAllUsers();
             }
-            if (hash === 'orcamentos') orcCheckAuth();
+            checkGlobalAuth().then(() => {
+                if (hash === 'orcamentos') orcCheckAuth();
+            });
         });
 
         window.addEventListener('popstate', () => {
@@ -2598,6 +2601,23 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
                 btn.disabled = false;
             }
         }
+        // ── Auth global (sidebar) ─────────────────────────────────────────
+        async function checkGlobalAuth() {
+            const area = document.getElementById('sidebar-user-area');
+            try {
+                const r = await fetch('/api/auth/me');
+                if (r.ok) {
+                    const u = await r.json();
+                    area.innerHTML = `
+                        <div class="sidebar-user-email">${u.email}</div>
+                        <a href="/api/auth/logout" class="sidebar-user-btn sidebar-btn-logout">Sair</a>`;
+                } else {
+                    area.innerHTML = `
+                        <a href="/api/auth/google" class="sidebar-user-btn sidebar-btn-login">Entrar com Google</a>`;
+                }
+            } catch { area.innerHTML = ''; }
+        }
+
         // ── Orçamentos ────────────────────────────────────────────────────
         let _orcPivotData = null;
 
@@ -2609,9 +2629,15 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
                     document.getElementById('orc-user-email').textContent = u.email;
                     document.getElementById('orc-login-gate').style.display = 'none';
                     document.getElementById('orc-workflow').style.display = 'block';
+                    sessionStorage.removeItem('orc_auth_tried');
                 } else {
-                    document.getElementById('orc-login-gate').style.display = 'block';
-                    document.getElementById('orc-workflow').style.display = 'none';
+                    if (!sessionStorage.getItem('orc_auth_tried')) {
+                        sessionStorage.setItem('orc_auth_tried', '1');
+                        window.location.href = '/api/auth/google';
+                    } else {
+                        document.getElementById('orc-login-gate').style.display = 'block';
+                        document.getElementById('orc-workflow').style.display = 'none';
+                    }
                 }
             } catch {
                 document.getElementById('orc-login-gate').style.display = 'block';

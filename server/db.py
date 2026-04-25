@@ -65,6 +65,7 @@ class ProdutoTabela(Base):
     codigo         = Column(String(100))
     descricao      = Column(String(1000), nullable=False)
     descricao_completa = Column(Text)
+    linha_produto      = Column(String(500))  # seção/linha do fabricante no PDF
     observacao         = Column(Text)
     ncm                = Column(String(20))
     unidade        = Column(String(20))

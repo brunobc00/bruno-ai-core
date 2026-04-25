@@ -14,11 +14,23 @@ import uuid
 import sys
 import tempfile
 import urllib.parse
+from datetime import datetime, timezone
+
+import jwt as pyjwt
 
 from dotenv import load_dotenv
 load_dotenv("/home/bruno/Documentos/Github/.env")
 
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from db import init_db
+from fornecedores import router as fornecedores_router, _global_router as fornecedores_global_router
+
 app = FastAPI(title="Antigravity Portal")
+
+@app.on_event("startup")
+def startup():
+    init_db()
 
 app.add_middleware(
     CORSMiddleware,
@@ -26,6 +38,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(fornecedores_router)
+app.include_router(fornecedores_global_router)
 
 OLLAMA_URL   = "http://localhost:11434/api/generate"
 DOCS_DIR     = os.path.abspath(os.path.join(os.path.dirname(__file__), "../docs/hub"))
@@ -36,14 +51,32 @@ REDMINE_KEY  = os.getenv("REDMINE_API_KEY")
 GOOGLE_CLIENT_ID     = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 GOOGLE_REDIRECT_URI  = "https://ia.automacaobbc.com/api/auth/google/callback"
+JWT_SECRET           = os.getenv("JWT_SECRET", "fallback-insecure-secret-change-me")
+JWT_ALGORITHM        = "HS256"
+JWT_EXPIRE_DAYS      = 7
 
-_sessions: dict = {}   # session_id → {email, name, access_token, refresh_token}
 _pdf_cache: dict = {}  # download_token → pdf_path
 
 
 def _get_session(request: Request) -> dict | None:
-    sid = request.cookies.get("session_id")
-    return _sessions.get(sid) if sid else None
+    token = request.cookies.get("session_id")
+    if not token:
+        return None
+    try:
+        return pyjwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    except pyjwt.PyJWTError:
+        return None
+
+
+def _make_jwt(email: str, name: str, access_token: str, refresh_token: str | None) -> str:
+    payload = {
+        "email":         email,
+        "name":          name,
+        "access_token":  access_token,
+        "refresh_token": refresh_token,
+        "exp":           datetime.now(timezone.utc) + timedelta(days=JWT_EXPIRE_DAYS),
+    }
+    return pyjwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
 # ── Activity Report ───────────────────────────────────────────────────────────
@@ -55,10 +88,10 @@ def _parse_commits(raw: str) -> list[dict]:
         line = line.strip()
         if not line:
             continue
-        parts = line.split("|", 3)
-        if len(parts) == 4:
+        parts = line.split("|", 4)
+        if len(parts) == 5:
             commits.append({"hash": parts[0], "date": parts[1],
-                            "author": parts[2], "msg": parts[3]})
+                            "author": parts[2], "email": parts[3], "msg": parts[4]})
     return commits
 
 
@@ -82,7 +115,7 @@ def _git_report_until(since: str, until: str) -> dict:
         result = subprocess.run(
             ["git", "-C", str(d), "log", f"origin/{main}",
              f"--after={since} 00:00", f"--before={until} 23:59",
-             "--format=%h|%ad|%an|%s", "--date=short"],
+             "--format=%h|%ad|%an|%ae|%s", "--date=short"],
             capture_output=True, text=True
         )
         commits = _parse_commits(result.stdout)
@@ -115,7 +148,7 @@ def _git_pending(since: str, until: str) -> dict:
                 ["git", "-C", str(d), "log", branch,
                  f"--not", f"origin/{main}",
                  f"--after={since} 00:00", f"--before={until} 23:59",
-                 "--format=%h|%ad|%an|%s", "--date=short"],
+                 "--format=%h|%ad|%an|%ae|%s", "--date=short"],
                 capture_output=True, text=True
             )
             commits = _parse_commits(log_r.stdout)
@@ -149,6 +182,7 @@ def _redmine_report(since: str, until: str) -> dict:
             "subject": i["subject"],
             "status":  status,
             "project": i.get("project", {}).get("name", "?"),
+            "date":    i.get("updated_on", "")[:10],
         })
         by_status[status] += 1
         if status in ("Resolved", "Closed"):
@@ -160,6 +194,183 @@ def _redmine_report(since: str, until: str) -> dict:
         "by_status": dict(by_status),
         "resolved":  resolved,
     }
+
+
+def _get_redmine_active_users() -> list[dict]:
+    """Retorna usuários ativos do Redmine com nome e email."""
+    try:
+        url = f"{REDMINE_URL}/users.json?limit=100&status=1"
+        resp = httpx.get(url, headers={"X-Redmine-API-Key": REDMINE_KEY}, timeout=10)
+        if resp.is_success:
+            return [
+                {
+                    "name":  f"{u.get('firstname','')} {u.get('lastname','')}".strip(),
+                    "email": u.get("mail", "").lower(),
+                }
+                for u in resp.json().get("users", [])
+                if u.get("mail")
+            ]
+    except Exception:
+        pass
+    return []
+
+
+def _fmt_date_pt(iso: str) -> str:
+    months = ["janeiro","fevereiro","março","abril","maio","junho",
+              "julho","agosto","setembro","outubro","novembro","dezembro"]
+    try:
+        d = date.fromisoformat(iso)
+        return f"{d.day} de {months[d.month-1]} de {d.year}"
+    except Exception:
+        return iso
+
+
+def _build_report_html(since: str, until: str, people: list, person_filter: str) -> str:
+    CSS = """
+    body { font-family: Arial, sans-serif; font-size: 11px; color: #1a1a1a; margin: 0; padding: 20px; }
+    h1 { font-size: 18px; color: #0d4f8b; margin-bottom: 4px; }
+    .subtitle { color: #555; font-size: 11px; margin-bottom: 24px; }
+    .person-block { margin-bottom: 32px; page-break-inside: avoid; }
+    .person-name { font-size: 15px; font-weight: bold; color: #0d4f8b; margin-bottom: 2px; }
+    .person-email { font-size: 10px; color: #666; margin-bottom: 10px; }
+    .no-activity { background: #fff8e1; border-left: 4px solid #f0a500; padding: 10px 14px;
+                   border-radius: 4px; color: #7a5700; font-size: 11px; margin-top: 6px; }
+    .day-block { margin-bottom: 16px; }
+    .day-header { font-size: 12px; font-weight: bold; color: #444; background: #f0f4f8;
+                  padding: 4px 10px; border-radius: 4px; margin-bottom: 6px; }
+    .section-label { font-size: 10px; font-weight: bold; color: #888; text-transform: uppercase;
+                     letter-spacing: .5px; margin: 6px 0 3px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+    th { background: #e8edf2; text-align: left; padding: 4px 8px; font-size: 10px; }
+    td { padding: 3px 8px; border-bottom: 1px solid #eee; font-size: 10px; vertical-align: top; }
+    .tag-rm { display: inline-block; background: #dbeafe; color: #1d4ed8; border-radius: 3px;
+              padding: 1px 5px; font-size: 9px; }
+    .tag-git { display: inline-block; background: #dcfce7; color: #15803d; border-radius: 3px;
+               padding: 1px 5px; font-size: 9px; }
+    footer { margin-top: 40px; font-size: 9px; color: #aaa; border-top: 1px solid #eee; padding-top: 8px; }
+    """
+    per_label = f"{_fmt_date_pt(since)}" if since == until else f"{_fmt_date_pt(since)} a {_fmt_date_pt(until)}"
+    body = f"""<!DOCTYPE html><html><head><meta charset="utf-8">
+    <style>{CSS}</style></head><body>
+    <h1>Relatório de Atividades</h1>
+    <div class="subtitle">Período: {per_label} &nbsp;|&nbsp; Gerado em {_fmt_date_pt(date.today().isoformat())}</div>
+    """
+
+    for p in people:
+        email_str = f" &lt;{p['email']}&gt;" if p.get("email") else ""
+        body += f'<div class="person-block">'
+        body += f'<div class="person-name">{p["name"]}</div>'
+        body += f'<div class="person-email">{p.get("email", "e-mail não disponível")}</div>'
+
+        if p.get("no_activity"):
+            msg = (f'O usuário <strong>{p["name"]}</strong>{email_str} não realizou '
+                   f'nenhuma atividade nesse período.')
+            body += f'<div class="no-activity">{msg}</div>'
+        else:
+            days = p.get("days", {})
+            for day_iso in sorted(days.keys()):
+                day_data = days[day_iso]
+                body += f'<div class="day-block"><div class="day-header">📅 {_fmt_date_pt(day_iso)}</div>'
+
+                rm_tasks = day_data.get("redmine_tasks", [])
+                if rm_tasks:
+                    body += '<div class="section-label">Redmine</div>'
+                    body += '<table><tr><th>#</th><th>Projeto</th><th>Tarefa</th><th>Status</th></tr>'
+                    for t in rm_tasks:
+                        body += f'<tr><td>#{t["id"]}</td><td>{t["project"]}</td><td>{t["subject"]}</td><td>{t["status"]}</td></tr>'
+                    body += '</table>'
+
+                git_commits = day_data.get("git_commits", [])
+                if git_commits:
+                    body += '<div class="section-label">Git</div>'
+                    body += '<table><tr><th>Hash</th><th>Repositório</th><th>Commit</th></tr>'
+                    for c in git_commits:
+                        body += f'<tr><td>{c["hash"]}</td><td>{c["repo"]}</td><td>{c["msg"]}</td></tr>'
+                    body += '</table>'
+
+                body += '</div>'
+
+        body += '</div>'
+
+    body += f'<footer>Antigravity Hub — ia.automacaobbc.com</footer></body></html>'
+    return body
+
+
+@app.get("/api/activity-report/pdf")
+async def activity_report_pdf(
+    since: str = Query(default=None),
+    until: str = Query(default=None),
+    person: str = Query(default=None),
+):
+    from fastapi.responses import Response
+    today = date.today().isoformat()
+    if not since:
+        since = (date.today() - timedelta(days=1)).isoformat()
+    if not until:
+        until = today
+
+    try:
+        git_data     = _git_report_until(since, until)
+        redmine_data = _redmine_report(since, until)
+        active_users = _get_redmine_active_users()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    email_to_name = {u["email"]: u["name"] for u in active_users if u["email"]}
+    name_to_email = {u["name"]: u["email"] for u in active_users}
+    active_names  = {u["name"] for u in active_users}
+
+    git_by_person: dict = defaultdict(list)
+    for repo, commits in git_data.items():
+        for c in commits:
+            name = email_to_name.get(c["email"].lower(), "")
+            if name:
+                git_by_person[name].append({**c, "repo": repo})
+
+    redmine_people = {p for p in redmine_data["by_person"]
+                      if p != "Sem responsável" and p in active_names}
+    all_people = sorted(redmine_people | set(git_by_person.keys()))
+
+    if person:
+        matched = [p for p in all_people if p == person]
+        if not matched:
+            people_data = [{"name": person, "email": name_to_email.get(person, ""), "no_activity": True}]
+        else:
+            all_people = matched
+            people_data = []
+    else:
+        people_data = []
+
+    for p in all_people:
+        rm_tasks    = redmine_data["by_person"].get(p, [])
+        git_commits = list(git_by_person.get(p, []))
+
+        days: dict = defaultdict(lambda: {"redmine_tasks": [], "git_commits": []})
+        for t in rm_tasks:
+            days[t.get("date", since)]["redmine_tasks"].append(t)
+        for c in git_commits:
+            days[c["date"]]["git_commits"].append(c)
+
+        people_data.append({
+            "name":        p,
+            "email":       name_to_email.get(p, ""),
+            "no_activity": False,
+            "days":        dict(sorted(days.items())),
+        })
+
+    html = _build_report_html(since, until, people_data, person or "")
+    try:
+        from weasyprint import HTML as WP
+        pdf_bytes = WP(string=html).write_pdf()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao gerar PDF: {e}")
+
+    filename = f"relatorio_{since}_{until}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @app.get("/api/activity-report")
@@ -174,39 +385,48 @@ async def activity_report(
         until = today
 
     try:
-        git_data     = _git_report_until(since, until)
-        pending_data = _git_pending(since, until)
-        redmine_data = _redmine_report(since, until)
+        git_data       = _git_report_until(since, until)
+        pending_data   = _git_pending(since, until)
+        redmine_data   = _redmine_report(since, until)
+        active_users   = _get_redmine_active_users()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-    # Commits mergeados por autor
-    git_by_author: dict = defaultdict(list)
+    # Mapa email → nome canônico (Redmine)
+    email_to_name = {u["email"]: u["name"] for u in active_users if u["email"]}
+    active_names  = {u["name"] for u in active_users}
+
+    # Commits mergeados por nome canônico (via email)
+    git_by_person: dict = defaultdict(list)
     for repo, commits in git_data.items():
         for c in commits:
-            git_by_author[c["author"]].append({**c, "repo": repo})
+            name = email_to_name.get(c["email"].lower(), "")
+            if name:
+                git_by_person[name].append({**c, "repo": repo})
 
-    # Commits pendentes por autor → {author: [{repo, branch, hash, date, msg}]}
-    pending_by_author: dict = defaultdict(list)
+    # Commits pendentes por nome canônico
+    pending_by_person: dict = defaultdict(list)
     total_pending = 0
     for repo, branches in pending_data.items():
         for branch, commits in branches.items():
             for c in commits:
-                pending_by_author[c["author"]].append(
-                    {**c, "repo": repo, "branch": branch}
-                )
-                total_pending += 1
+                name = email_to_name.get(c["email"].lower(), "")
+                if name:
+                    pending_by_person[name].append({**c, "repo": repo, "branch": branch})
+                    total_pending += 1
 
-    redmine_people = {p for p in redmine_data["by_person"] if p != "Sem responsável"}
+    # Só pessoas ativas no Redmine com atividade no período
+    redmine_people = {p for p in redmine_data["by_person"]
+                      if p != "Sem responsável" and p in active_names}
     all_people = sorted(
-        redmine_people | set(git_by_author.keys()) | set(pending_by_author.keys())
+        redmine_people | set(git_by_person.keys()) | set(pending_by_person.keys())
     )
 
     people = []
     for person in all_people:
-        redmine_tasks    = redmine_data["by_person"].get(person, [])
-        git_commits      = list(git_by_author.get(person, []))
-        pending_commits  = list(pending_by_author.get(person, []))
+        redmine_tasks   = redmine_data["by_person"].get(person, [])
+        git_commits     = list(git_by_person.get(person, []))
+        pending_commits = list(pending_by_person.get(person, []))
         if not redmine_tasks and not git_commits and not pending_commits:
             continue
 
@@ -219,60 +439,35 @@ async def activity_report(
             pending_by_branch[f"{c['repo']} / {c['branch']}"].append(c)
 
         people.append({
-            "name":             person,
-            "redmine_tasks":    redmine_tasks,
-            "git_by_repo":      dict(by_repo),
-            "total_commits":    len(git_commits),
+            "name":              person,
+            "redmine_tasks":     redmine_tasks,
+            "git_by_repo":       dict(by_repo),
+            "total_commits":     len(git_commits),
             "pending_by_branch": dict(pending_by_branch),
-            "total_pending":    len(pending_commits),
+            "total_pending":     len(pending_commits),
         })
 
     unassigned = [t for t in redmine_data["by_person"].get("Sem responsável", [])
                   if t["status"] == "New"]
 
     return {
-        "since":          since,
-        "today":          today,
-        "total_commits":  sum(len(c) for c in git_data.values()),
-        "active_repos":   len(git_data),
-        "total_issues":   redmine_data["total"],
-        "resolved":       redmine_data["resolved"],
-        "total_pending":  total_pending,
-        "people":         people,
-        "unassigned":     unassigned,
+        "since":         since,
+        "today":         today,
+        "total_commits": sum(len(c) for c in git_data.values()),
+        "active_repos":  len(git_data),
+        "total_issues":  redmine_data["total"],
+        "resolved":      redmine_data["resolved"],
+        "total_pending": total_pending,
+        "people":        people,
+        "unassigned":    unassigned,
     }
 
 
 @app.get("/api/users")
 async def list_users():
-    """Retorna todos os autores Git (histórico completo) + assignees do Redmine."""
-    git_authors: set[str] = set()
-    for d in sorted(WORKSPACE.iterdir()):
-        if not (d / ".git").exists():
-            continue
-        result = subprocess.run(
-            ["git", "-C", str(d), "log", "--format=%an"],
-            capture_output=True, text=True
-        )
-        for name in result.stdout.strip().splitlines():
-            name = name.strip()
-            if name:
-                git_authors.add(name)
-
-    redmine_authors: set[str] = set()
-    try:
-        url = f"{REDMINE_URL}/issues.json?limit=100&status_id=*&assigned_to_id=*"
-        resp = httpx.get(url, headers={"X-Redmine-API-Key": REDMINE_KEY}, timeout=15)
-        if resp.is_success:
-            for i in resp.json().get("issues", []):
-                name = i.get("assigned_to", {}).get("name", "")
-                if name and name != "Sem responsável":
-                    redmine_authors.add(name)
-    except Exception:
-        pass
-
-    all_users = sorted(git_authors | redmine_authors)
-    return {"users": all_users}
+    """Retorna apenas usuários ativos do Redmine."""
+    users = _get_redmine_active_users()
+    return {"users": sorted(u["name"] for u in users)}
 
 
 # ── Chat ──────────────────────────────────────────────────────────────────────
@@ -345,7 +540,7 @@ async def auth_google():
         "response_type": "code",
         "scope":         "openid email profile https://www.googleapis.com/auth/spreadsheets.readonly",
         "access_type":   "offline",
-        "prompt":        "consent",
+        "prompt":        "select_account",
     })
     return RedirectResponse(f"https://accounts.google.com/o/oauth2/auth?{params}")
 
@@ -369,15 +564,14 @@ async def auth_google_callback(code: str):
         )
         user = user_r.json()
 
-    sid = str(uuid.uuid4())
-    _sessions[sid] = {
-        "email":         user.get("email"),
-        "name":          user.get("name"),
-        "access_token":  tokens.get("access_token"),
-        "refresh_token": tokens.get("refresh_token"),
-    }
+    token = _make_jwt(
+        email=user.get("email"),
+        name=user.get("name"),
+        access_token=tokens.get("access_token"),
+        refresh_token=tokens.get("refresh_token"),
+    )
     resp = RedirectResponse(url="/#orcamentos")
-    resp.set_cookie("session_id", sid, httponly=True, samesite="lax", max_age=86400 * 7)
+    resp.set_cookie("session_id", token, httponly=True, samesite="lax", max_age=86400 * JWT_EXPIRE_DAYS)
     return resp
 
 
@@ -390,10 +584,7 @@ async def auth_me(request: Request):
 
 
 @app.get("/api/auth/logout")
-async def auth_logout(request: Request):
-    sid = request.cookies.get("session_id")
-    if sid:
-        _sessions.pop(sid, None)
+async def auth_logout():
     resp = RedirectResponse(url="/")
     resp.delete_cookie("session_id")
     return resp
