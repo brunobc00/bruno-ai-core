@@ -601,6 +601,144 @@
         }
         .btn-google:hover { opacity: 0.9; }
         .btn-google img { width: 20px; height: 20px; }
+        .orc-tab-bar {
+            display: flex; gap: 0.4rem;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 1rem; padding-bottom: 0.6rem;
+        }
+        .orc-tab {
+            background: none;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            padding: 0.35rem 0.8rem;
+            cursor: pointer; font-size: 0.82rem;
+            transition: all 0.2s;
+        }
+        .orc-tab.active {
+            background: rgba(31,255,140,0.1);
+            border-color: rgba(31,255,140,0.4);
+            color: var(--accent-color);
+        }
+        .orc-total-destaque {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 1rem 1.2rem;
+            background: rgba(31,255,140,0.06);
+            border: 1px solid rgba(31,255,140,0.3);
+            border-radius: 10px;
+            margin-bottom: 1.2rem;
+        }
+        .orc-total-destaque .label { color: var(--text-secondary); font-size: 0.9rem; }
+        .orc-total-destaque .value { color: var(--accent-color); font-size: 1.5rem; font-weight: 800; }
+        .orc-status-bar {
+            display: none;
+            align-items: center; gap: 0.6rem;
+            padding: 0.6rem 0.9rem;
+            border-radius: 8px;
+            font-size: 0.83rem;
+            margin-top: 0.6rem;
+            border: 1px solid var(--border-color);
+            background: rgba(255,255,255,0.03);
+        }
+        .orc-status-bar.s-loading { border-color: rgba(255,196,0,0.4); color: #ffc400; }
+        .orc-status-bar.s-ok      { border-color: rgba(31,255,140,0.4); color: var(--accent-color); }
+        .orc-status-bar.s-error   { border-color: rgba(255,80,80,0.4);  color: #ff5050; }
+        .orc-spin { display: inline-block; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .orc-md-toolbar {
+            display: flex; gap: 0.25rem; flex-wrap: wrap;
+            margin-bottom: 0.35rem; padding: 0.3rem 0.4rem;
+            background: rgba(255,255,255,0.04); border-radius: 6px 6px 0 0;
+            border: 1px solid rgba(255,255,255,0.07); border-bottom: none;
+        }
+        .orc-md-btn {
+            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+            color: #aaa; border-radius: 4px; padding: 0.2rem 0.45rem;
+            font-size: 0.75rem; cursor: pointer; line-height: 1.4;
+            font-family: monospace; transition: background 0.15s, color 0.15s;
+        }
+        .orc-md-btn:hover { background: rgba(255,255,255,0.12); color: #fff; }
+        .orc-md-toolbar + .orc-input { border-radius: 0 0 6px 6px; }
+        .ai-status-bar {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            font-size: 0.76rem; padding: 0.3rem 0.7rem;
+            border-radius: 20px; border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.04); margin-top: 0.5rem;
+        }
+        .ai-dot {
+            width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+            transition: background 0.3s, box-shadow 0.3s;
+        }
+        .ai-dot.off    { background: #555; }
+        .ai-dot.warn   { background: #ffc400; box-shadow: 0 0 5px #ffc400; }
+        .ai-dot.ok     { background: var(--accent-color); box-shadow: 0 0 6px var(--accent-color); }
+        .ai-dot.spin   { background: #7c9eff; animation: pulse-dot 1s ease-in-out infinite; }
+        @keyframes pulse-dot { 0%,100%{ opacity:1; } 50%{ opacity:0.3; } }
+        .ai-load-btn {
+            background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
+            color: #ccc; border-radius: 10px; padding: 0.15rem 0.55rem;
+            font-size: 0.72rem; cursor: pointer; transition: background 0.15s;
+        }
+        .ai-load-btn:hover { background: rgba(255,255,255,0.16); color: #fff; }
+
+        .orc-ai-box {
+            margin-top: 0.6rem; border-radius: 6px;
+            border: 1px solid rgba(155, 120, 255, 0.35);
+            background: rgba(155, 120, 255, 0.06);
+        }
+        .orc-ai-box-header {
+            display: flex; align-items: center; gap: 0.5rem;
+            padding: 0.5rem 0.8rem; font-size: 0.78rem;
+            color: #b8a0ff; border-bottom: 1px solid rgba(155,120,255,0.2);
+        }
+        .orc-ai-pre {
+            margin: 0; padding: 0.7rem 0.8rem;
+            font-family: inherit; font-size: 0.82rem; color: #ccc;
+            white-space: pre-wrap; word-break: break-word; line-height: 1.6;
+        }
+        .orc-ai-actions { display: flex; gap: 0.5rem; padding: 0.5rem 0.8rem; }
+
+        .orc-ai-modebar {
+            display: flex; align-items: center; gap: 0.35rem;
+            padding: 0.3rem 0.5rem; font-size: 0.72rem;
+            background: rgba(155,120,255,0.05);
+            border: 1px solid rgba(155,120,255,0.15);
+            border-top: none; border-radius: 0 0 0 0;
+        }
+        .orc-ai-modelabel { color: #888; margin-right: 0.15rem; white-space: nowrap; }
+        .orc-ai-mode-btn {
+            padding: 0.15rem 0.55rem; font-size: 0.7rem; border-radius: 4px; cursor: pointer;
+            border: 1px solid rgba(155,120,255,0.25); background: transparent;
+            color: #999; transition: all 0.15s;
+        }
+        .orc-ai-mode-btn:hover { color: #b8a0ff; border-color: rgba(155,120,255,0.5); }
+        .orc-ai-mode-btn.active { background: rgba(155,120,255,0.2); color: #b8a0ff; border-color: rgba(155,120,255,0.5); }
+        .orc-ai-help-btn {
+            margin-left: auto; width: 1.2rem; height: 1.2rem; border-radius: 50%;
+            border: 1px solid #555; background: transparent; color: #888;
+            font-size: 0.65rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+        .orc-ai-help-btn:hover { border-color: #b8a0ff; color: #b8a0ff; }
+        .orc-ai-instrucao-wrap {
+            padding: 0.35rem 0.5rem;
+            background: rgba(155,120,255,0.05);
+            border: 1px solid rgba(155,120,255,0.15);
+            border-top: none;
+        }
+        .orc-ai-instrucao {
+            width: 100%; box-sizing: border-box;
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(155,120,255,0.3);
+            border-radius: 4px; color: #ddd; font-size: 0.78rem; padding: 0.3rem 0.5rem;
+        }
+        .orc-ai-instrucao::placeholder { color: #666; }
+
+        .orc-collapse-btn {
+            background: none; border: none;
+            color: var(--text-secondary); font-size: 0.8rem;
+            cursor: pointer; padding: 0; margin-left: auto;
+            text-decoration: underline; white-space: nowrap;
+        }
+        .orc-collapse-btn:hover { color: var(--accent-color); }
     </style>
 </head>
 <body>
@@ -1712,7 +1850,12 @@ git add . &amp;&amp; git commit -m &quot;&lt;tipo&gt;: &lt;descrição&gt;&quot;
         <section id="orcamentos" class="page">
             <header>
                 <h1>Gerador de Orçamentos</h1>
-                <p class="subtitle">Leia uma planilha Google Sheets, revise a tabela pivot e exporte o PDF.</p>
+                <p class="subtitle">Preencha os 4 campos e gere o PDF no padrão Carvalhaes Comercial.</p>
+                <div class="ai-status-bar" id="ai-status-bar">
+                    <span class="ai-dot spin" id="ai-dot"></span>
+                    <span id="ai-status-txt">Verificando IA…</span>
+                    <button class="ai-load-btn" id="ai-load-btn" style="display:none;" onclick="aiCarregarModelo()">Carregar modelo</button>
+                </div>
             </header>
 
             <!-- Login gate (fallback — só aparece se o OAuth falhar) -->
@@ -1737,46 +1880,14 @@ git add . &amp;&amp; git commit -m &quot;&lt;tipo&gt;: &lt;descrição&gt;&quot;
                     <a href="/api/auth/logout" style="color:#666;font-size:0.8rem;text-decoration:none;">Sair</a>
                 </div>
 
-                <!-- Step 1: Planilha URL -->
+                <!-- ── BOX 1: Dados do Cliente ── -->
                 <div class="orc-step active" id="orc-step-1">
                     <div class="orc-step-header">
                         <div class="orc-step-num">1</div>
-                        <div class="orc-step-title">Cole o link da planilha Google Sheets</div>
+                        <div class="orc-step-title">Dados do Cliente</div>
                     </div>
-                    <input class="orc-input" id="orc-sheet-url" type="url"
-                        placeholder="https://docs.google.com/spreadsheets/d/...">
-                    <button class="report-btn" id="orc-btn-processar" onclick="orcProcessar()">
-                        Processar Planilha →
-                    </button>
-                    <div id="orc-step1-error" style="color:#ff5050;font-size:0.83rem;margin-top:0.5rem;display:none;"></div>
-                </div>
-
-                <!-- Step 2: Preview -->
-                <div class="orc-step" id="orc-step-2" style="display:none;">
-                    <div class="orc-step-header">
-                        <div class="orc-step-num">2</div>
-                        <div class="orc-step-title">Revise o resumo do orçamento</div>
-                    </div>
-                    <div class="table-wrapper">
-                        <table class="orc-preview-table" id="orc-table">
-                            <thead>
-                                <tr>
-                                    <th>Ambiente</th>
-                                    <th>Grupo</th>
-                                    <th class="td-r">Qtd</th>
-                                    <th class="td-r">Unit. c/desc</th>
-                                    <th class="td-r">Total</th>
-                                </tr>
-                            </thead>
-                            <tbody id="orc-table-body"></tbody>
-                        </table>
-                    </div>
-                    <div class="orc-total-bar">
-                        <span class="label">Total Geral</span>
-                        <span class="value" id="orc-total-value">—</span>
-                    </div>
-                    <!-- Client info row -->
-                    <div style="margin-top:1.2rem;display:flex;gap:0.6rem;flex-wrap:wrap;align-items:flex-end;">
+                    <!-- linha 1: nome, cnpj, validade -->
+                    <div style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:0.6rem;">
                         <div style="flex:2;min-width:200px;">
                             <label style="font-size:0.78rem;color:#666;display:block;margin-bottom:0.3rem;">Nome do Cliente *</label>
                             <input class="orc-input" id="orc-client-name" type="text" placeholder="Ex: Condomínio Edifício Ozanam" style="margin-bottom:0;">
@@ -1790,33 +1901,294 @@ git add . &amp;&amp; git commit -m &quot;&lt;tipo&gt;: &lt;descrição&gt;&quot;
                             <input class="orc-input" id="orc-validade" type="text" placeholder="DD/MM/AAAA" style="margin-bottom:0;">
                         </div>
                     </div>
-
-                    <!-- Observations -->
-                    <div style="margin-top:1rem;">
-                        <label style="font-size:0.78rem;color:#666;display:block;margin-bottom:0.3rem;">Observações do Projeto (opcional)</label>
-                        <textarea class="orc-input" id="orc-observacoes" rows="3" placeholder="Ex: Itens especificados em conformidade com o projeto arquitetônico. Pendente de definição o pendente do coworking." style="margin-bottom:0;resize:vertical;font-family:inherit;"></textarea>
-                    </div>
-
-                    <!-- Payment conditions -->
-                    <div id="orc-pagamento-wrap" style="margin-top:1.2rem;display:none;">
-                        <div style="font-size:0.78rem;color:#666;margin-bottom:0.5rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">
-                            Condições de Pagamento
-                            <span style="font-weight:400;color:#444;text-transform:none;letter-spacing:0;margin-left:0.5rem;">(extraídas da planilha — editável)</span>
+                    <!-- linha 2: cep + endereço -->
+                    <div style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:0.3rem;">
+                        <div style="flex:0 0 auto;">
+                            <label style="font-size:0.78rem;color:#666;display:block;margin-bottom:0.3rem;">CEP (opcional)</label>
+                            <div style="display:flex;gap:0.3rem;align-items:center;">
+                                <input class="orc-input" id="orc-cep" type="text" maxlength="9"
+                                    placeholder="00000-000" style="margin-bottom:0;width:105px;"
+                                    oninput="orcFormatCEP(this)">
+                                <button class="report-btn report-btn-secondary" id="orc-btn-cep"
+                                    style="padding:0.35rem 0.6rem;font-size:0.8rem;white-space:nowrap;"
+                                    onclick="orcBuscarCEP()">Buscar</button>
+                            </div>
                         </div>
-                        <div id="orc-pagamento-rows" style="display:flex;flex-direction:column;gap:0.4rem;"></div>
+                        <div style="flex:1;min-width:220px;">
+                            <label style="font-size:0.78rem;color:#666;display:block;margin-bottom:0.3rem;">Endereço (opcional)</label>
+                            <input class="orc-input" id="orc-endereco" type="text"
+                                placeholder="Preenchido pelo CEP ou digite manualmente" style="margin-bottom:0;">
+                        </div>
                     </div>
-
-                    <div style="margin-top:1.2rem;display:flex;gap:0.6rem;flex-wrap:wrap;">
-                        <button class="report-btn report-btn-secondary" onclick="orcReset()">← Voltar</button>
-                        <button class="report-btn" id="orc-btn-gerar" onclick="orcGerarPDF()">Gerar PDF →</button>
+                    <div id="orc-cep-msg" style="font-size:0.78rem;margin-bottom:0.5rem;display:none;"></div>
+                    <!-- linha 3: responsável, telefone, email -->
+                    <div style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:flex-end;">
+                        <div style="flex:2;min-width:180px;">
+                            <label style="font-size:0.78rem;color:#666;display:block;margin-bottom:0.3rem;">Nome do Responsável (opcional)</label>
+                            <input class="orc-input" id="orc-responsavel" type="text" placeholder="Ex: João da Silva" style="margin-bottom:0;">
+                        </div>
+                        <div style="flex:1;min-width:140px;">
+                            <label style="font-size:0.78rem;color:#666;display:block;margin-bottom:0.3rem;">Telefone (opcional)</label>
+                            <input class="orc-input" id="orc-telefone" type="tel" placeholder="(35) 9 9999-9999" style="margin-bottom:0;">
+                        </div>
+                        <div style="flex:1;min-width:180px;">
+                            <label style="font-size:0.78rem;color:#666;display:block;margin-bottom:0.3rem;">E-mail (opcional)</label>
+                            <input class="orc-input" id="orc-email" type="email" placeholder="email@cliente.com.br" style="margin-bottom:0;">
+                        </div>
                     </div>
-                    <div id="orc-step2-error" style="color:#ff5050;font-size:0.83rem;margin-top:0.5rem;display:none;"></div>
+                    <div id="orc-step1-error" style="color:#ff5050;font-size:0.83rem;margin-top:0.6rem;display:none;"></div>
+                    <div style="margin-top:1.2rem;">
+                        <button class="report-btn" onclick="orcStep1Next()">Próximo →</button>
+                    </div>
                 </div>
 
-                <!-- Step 3: Download -->
+                <!-- ── BOX 2: Descrição do Projeto ── -->
+                <div class="orc-step" id="orc-step-2" style="display:none;">
+                    <div class="orc-step-header">
+                        <div class="orc-step-num">2</div>
+                        <div class="orc-step-title">Descrição do Projeto</div>
+                    </div>
+                    <label style="font-size:0.78rem;color:#666;display:block;margin-bottom:0.4rem;">Descreva o projeto (aparecerá no início do PDF, antes dos itens — opcional)</label>
+                    <div class="orc-md-toolbar">
+                        <button class="orc-md-btn" title="Negrito" onclick="orcMd('orc-descricao-projeto','**','**','texto')">**B**</button>
+                        <button class="orc-md-btn" title="Itálico" onclick="orcMd('orc-descricao-projeto','*','*','texto')">*I*</button>
+                        <button class="orc-md-btn" title="Título" onclick="orcMdPfx('orc-descricao-projeto','## ')">H2</button>
+                        <button class="orc-md-btn" title="Lista com marcadores" onclick="orcMdPfx('orc-descricao-projeto','- ')">• Lista</button>
+                        <button class="orc-md-btn" title="Lista numerada" onclick="orcMdPfx('orc-descricao-projeto','1. ')">1. Lista</button>
+                        <button class="orc-md-btn" title="Separador" onclick="orcMdIns('orc-descricao-projeto','\n---\n')">―――</button>
+                        <button class="orc-md-btn" id="orc-ai-btn-orc-descricao-projeto"
+                            title="Melhorar com IA (Ollama)"
+                            onclick="orcMelhorarTexto('orc-descricao-projeto')"
+                            style="margin-left:auto;color:#b8a0ff;border-color:rgba(155,120,255,0.3);">✨ IA</button>
+                    </div>
+                    <div class="orc-ai-modebar" id="orc-ai-modebar-orc-descricao-projeto">
+                        <span class="orc-ai-modelabel">Modo IA:</span>
+                        <button class="orc-ai-mode-btn" onclick="orcSetMode('orc-descricao-projeto','minimo',this)">Mínimo</button>
+                        <button class="orc-ai-mode-btn active" onclick="orcSetMode('orc-descricao-projeto','completo',this)">Padrão</button>
+                        <button class="orc-ai-mode-btn" onclick="orcSetMode('orc-descricao-projeto','livre',this)">Livre</button>
+                        <button class="orc-ai-help-btn" onclick="orcModoHelp()" title="Ajuda sobre os modos de IA">?</button>
+                    </div>
+                    <div class="orc-ai-instrucao-wrap" id="orc-ai-instrucao-wrap-orc-descricao-projeto" style="display:none;">
+                        <input class="orc-ai-instrucao" id="orc-ai-instrucao-orc-descricao-projeto" type="text"
+                            placeholder="Ex: descreva que o projeto visa uma iluminação moderna e eficiente com foco em economia de energia">
+                    </div>
+                    <textarea class="orc-input" id="orc-descricao-projeto" rows="6"
+                        placeholder="Ex: Projeto de iluminação para residência em estilo moderno, contemplando ambientes internos e área externa. Todos os itens foram selecionados em conformidade com o projeto arquitetônico apresentado."
+                        style="resize:vertical;font-family:inherit;border-radius:0 0 6px 6px;"></textarea>
+                    <div class="orc-ai-box" id="orc-ai-box-orc-descricao-projeto" style="display:none;">
+                        <div class="orc-ai-box-header">
+                            <span>✨</span><span>Sugestão do Ollama — revise antes de aprovar</span>
+                        </div>
+                        <pre class="orc-ai-pre" id="orc-ai-text-orc-descricao-projeto"></pre>
+                        <div class="orc-ai-actions">
+                            <button class="report-btn" style="font-size:0.8rem;padding:0.3rem 0.8rem;"
+                                onclick="orcAprovarSugestao('orc-descricao-projeto')">✓ Usar sugestão</button>
+                            <button class="report-btn report-btn-secondary" style="font-size:0.8rem;padding:0.3rem 0.8rem;"
+                                onclick="document.getElementById('orc-ai-box-orc-descricao-projeto').style.display='none'">✕ Descartar</button>
+                        </div>
+                    </div>
+                    <div style="margin-top:1.2rem;display:flex;gap:0.6rem;flex-wrap:wrap;">
+                        <button class="report-btn report-btn-secondary" onclick="orcGoStep(1)">← Voltar</button>
+                        <button class="report-btn" onclick="orcGoStep(3)">Próximo →</button>
+                    </div>
+                </div>
+
+                <!-- ── BOX 3: Planilha ── -->
                 <div class="orc-step" id="orc-step-3" style="display:none;">
                     <div class="orc-step-header">
                         <div class="orc-step-num">3</div>
+                        <div class="orc-step-title">Dados da Planilha</div>
+                    </div>
+
+                    <div class="orc-tab-bar">
+                        <button class="orc-tab active" id="orc-tab-link" onclick="orcSwitchTab('link')">Link Google Sheets</button>
+                        <button class="orc-tab" id="orc-tab-paste" onclick="orcSwitchTab('paste')">Colar dados</button>
+                    </div>
+
+                    <!-- modo link -->
+                    <div id="orc-mode-link">
+                        <input class="orc-input" id="orc-sheet-url" type="url"
+                            placeholder="https://docs.google.com/spreadsheets/d/...">
+                        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+                            <button class="report-btn" id="orc-btn-processar" onclick="orcProcessarLink()">
+                                Processar Planilha
+                            </button>
+                            <button class="report-btn report-btn-secondary" id="orc-btn-criar-template"
+                                onclick="orcCriarTemplate()" style="font-size:0.82rem;">
+                                Criar Aba Template
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- modo colar -->
+                    <div id="orc-mode-paste" style="display:none;">
+                        <!-- exemplo colapsível -->
+                        <div style="margin-bottom:0.8rem;">
+                            <button class="orc-collapse-btn" id="orc-exemplo-btn"
+                                onclick="orcToggleExemplo()" style="margin-bottom:0.4rem;">
+                                Ver formato esperado ▾
+                            </button>
+                            <div id="orc-exemplo-wrap" style="display:none;overflow-x:auto;">
+                                <table style="width:100%;border-collapse:collapse;font-size:0.72rem;font-family:monospace;background:rgba(0,0,0,0.25);border-radius:6px;">
+                                    <thead>
+                                        <tr style="color:var(--accent-color);border-bottom:1px solid rgba(255,255,255,0.1);">
+                                            <th style="padding:0.35rem 0.5rem;text-align:left;">AMBIENTE</th>
+                                            <th style="padding:0.35rem 0.5rem;text-align:left;">GRUPO</th>
+                                            <th style="padding:0.35rem 0.5rem;text-align:right;">Quantidade</th>
+                                            <th style="padding:0.35rem 0.5rem;text-align:right;">Valor Unitário</th>
+                                            <th style="padding:0.35rem 0.5rem;text-align:right;">Valor Total</th>
+                                            <th style="padding:0.35rem 0.5rem;text-align:right;">À Vista</th>
+                                            <th style="padding:0.35rem 0.5rem;text-align:right;">28 Dias</th>
+                                            <th style="padding:0.35rem 0.5rem;text-align:right;">30 Dias</th>
+                                            <th style="padding:0.35rem 0.5rem;text-align:right;">60 Dias</th>
+                                            <th style="padding:0.35rem 0.5rem;text-align:right;">…</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody style="color:#aaa;">
+                                        <tr>
+                                            <td style="padding:0.3rem 0.5rem;">Sala</td>
+                                            <td style="padding:0.3rem 0.5rem;">Spot LED</td>
+                                            <td style="padding:0.3rem 0.5rem;text-align:right;">4</td>
+                                            <td style="padding:0.3rem 0.5rem;text-align:right;">300,00</td>
+                                            <td style="padding:0.3rem 0.5rem;text-align:right;">1.200,00</td>
+                                            <td style="padding:0.3rem 0.5rem;text-align:right;"></td>
+                                            <td style="padding:0.3rem 0.5rem;text-align:right;"></td>
+                                            <td style="padding:0.3rem 0.5rem;text-align:right;">1.200,00</td>
+                                            <td style="padding:0.3rem 0.5rem;text-align:right;"></td>
+                                            <td style="padding:0.3rem 0.5rem;text-align:right;">…</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <p style="font-size:0.72rem;color:#666;margin-top:0.4rem;">
+                                    Colunas opcionais: células vazias são ignoradas. Colunas de pagamento aceitam valor somente na condição utilizada.
+                                </p>
+                            </div>
+                        </div>
+                        <label style="font-size:0.78rem;color:#666;display:block;margin-bottom:0.4rem;">Selecione tudo na planilha (Ctrl+A) e copie (Ctrl+C), depois cole aqui:</label>
+                        <textarea class="orc-input" id="orc-sheet-texto" rows="7"
+                            placeholder="Cole aqui os dados copiados da planilha..."
+                            style="resize:vertical;font-family:monospace;font-size:0.78rem;"></textarea>
+                        <button class="report-btn" id="orc-btn-processar-texto" onclick="orcProcessarTexto()">
+                            Processar Dados
+                        </button>
+                    </div>
+
+                    <!-- barra de status -->
+                    <div id="orc-status-bar" class="orc-status-bar"></div>
+
+                    <!-- tabela e total (aparece após processar) -->
+                    <div id="orc-preview-wrap" style="display:none;margin-top:1rem;">
+                        <div class="orc-total-bar">
+                            <span class="label">Total Geral</span>
+                            <span class="value" id="orc-total-value">—</span>
+                            <button class="orc-collapse-btn" id="orc-collapse-btn" onclick="orcToggleTable()">Ver itens ▾</button>
+                        </div>
+                        <div id="orc-table-wrap" style="display:none;margin-top:0.6rem;">
+                            <div class="table-wrapper">
+                                <table class="orc-preview-table" id="orc-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Ambiente</th>
+                                            <th>Grupo</th>
+                                            <th class="td-r">Qtd</th>
+                                            <th class="td-r">Unit. c/desc</th>
+                                            <th class="td-r">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="orc-table-body"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top:1.2rem;display:flex;gap:0.6rem;flex-wrap:wrap;">
+                        <button class="report-btn report-btn-secondary" onclick="orcGoStep(2)">← Voltar</button>
+                        <button class="report-btn" id="orc-btn-step2-next" onclick="orcStep2Next()" disabled>Próximo →</button>
+                    </div>
+                </div>
+
+                <!-- ── BOX 4: Forma de Pagamento ── -->
+                <div class="orc-step" id="orc-step-4" style="display:none;">
+                    <div class="orc-step-header">
+                        <div class="orc-step-num">4</div>
+                        <div class="orc-step-title">Forma de Pagamento</div>
+                    </div>
+
+                    <div class="orc-total-destaque">
+                        <span class="label">Total do Orçamento</span>
+                        <span class="value" id="orc-total-step3">—</span>
+                    </div>
+
+                    <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.6rem;">
+                        <span style="font-size:0.78rem;color:#666;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Condições de Pagamento</span>
+                        <button class="report-btn report-btn-secondary" style="font-size:0.8rem;padding:0.3rem 0.7rem;" onclick="orcAddPagamentoRow()">+ Adicionar parcela</button>
+                    </div>
+                    <div id="orc-pagamento-rows" style="display:flex;flex-direction:column;gap:0.4rem;"></div>
+
+                    <div id="orc-pag-summary" style="display:none;margin-top:0.8rem;font-size:0.82rem;padding:0.5rem 0.8rem;border-radius:6px;border:1px solid transparent;"></div>
+
+                    <div style="margin-top:1.2rem;display:flex;gap:0.6rem;flex-wrap:wrap;">
+                        <button class="report-btn report-btn-secondary" onclick="orcGoStep(3)">← Voltar</button>
+                        <button class="report-btn" onclick="orcGoStep(5)">Próximo →</button>
+                    </div>
+                </div>
+
+                <!-- ── BOX 5: Informações Adicionais ── -->
+                <div class="orc-step" id="orc-step-5" style="display:none;">
+                    <div class="orc-step-header">
+                        <div class="orc-step-num">5</div>
+                        <div class="orc-step-title">Informações Adicionais</div>
+                    </div>
+                    <label style="font-size:0.78rem;color:#666;display:block;margin-bottom:0.4rem;">Texto livre que aparecerá como "Informações Adicionais" no PDF (opcional)</label>
+                    <div class="orc-md-toolbar">
+                        <button class="orc-md-btn" title="Negrito" onclick="orcMd('orc-observacoes','**','**','texto')">**B**</button>
+                        <button class="orc-md-btn" title="Itálico" onclick="orcMd('orc-observacoes','*','*','texto')">*I*</button>
+                        <button class="orc-md-btn" title="Título" onclick="orcMdPfx('orc-observacoes','## ')">H2</button>
+                        <button class="orc-md-btn" title="Lista com marcadores" onclick="orcMdPfx('orc-observacoes','- ')">• Lista</button>
+                        <button class="orc-md-btn" title="Lista numerada" onclick="orcMdPfx('orc-observacoes','1. ')">1. Lista</button>
+                        <button class="orc-md-btn" title="Separador" onclick="orcMdIns('orc-observacoes','\n---\n')">―――</button>
+                        <button class="orc-md-btn" id="orc-ai-btn-orc-observacoes"
+                            title="Melhorar com IA (Ollama)"
+                            onclick="orcMelhorarTexto('orc-observacoes')"
+                            style="margin-left:auto;color:#b8a0ff;border-color:rgba(155,120,255,0.3);">✨ IA</button>
+                    </div>
+                    <div class="orc-ai-modebar" id="orc-ai-modebar-orc-observacoes">
+                        <span class="orc-ai-modelabel">Modo IA:</span>
+                        <button class="orc-ai-mode-btn" onclick="orcSetMode('orc-observacoes','minimo',this)">Mínimo</button>
+                        <button class="orc-ai-mode-btn active" onclick="orcSetMode('orc-observacoes','completo',this)">Padrão</button>
+                        <button class="orc-ai-mode-btn" onclick="orcSetMode('orc-observacoes','livre',this)">Livre</button>
+                        <button class="orc-ai-help-btn" onclick="orcModoHelp()" title="Ajuda sobre os modos de IA">?</button>
+                    </div>
+                    <div class="orc-ai-instrucao-wrap" id="orc-ai-instrucao-wrap-orc-observacoes" style="display:none;">
+                        <input class="orc-ai-instrucao" id="orc-ai-instrucao-orc-observacoes" type="text"
+                            placeholder="Ex: mencione que os itens são especificados conforme projeto arquitetônico">
+                    </div>
+                    <textarea class="orc-input" id="orc-observacoes" rows="5"
+                        placeholder="Ex: O pendente da recepção será como na descrição do projeto (2 módulos). Itens especificados em conformidade com o projeto arquitetônico."
+                        style="resize:vertical;font-family:inherit;border-radius:0 0 6px 6px;"></textarea>
+                    <div class="orc-ai-box" id="orc-ai-box-orc-observacoes" style="display:none;">
+                        <div class="orc-ai-box-header">
+                            <span>✨</span><span>Sugestão do Ollama — revise antes de aprovar</span>
+                        </div>
+                        <pre class="orc-ai-pre" id="orc-ai-text-orc-observacoes"></pre>
+                        <div class="orc-ai-actions">
+                            <button class="report-btn" style="font-size:0.8rem;padding:0.3rem 0.8rem;"
+                                onclick="orcAprovarSugestao('orc-observacoes')">✓ Usar sugestão</button>
+                            <button class="report-btn report-btn-secondary" style="font-size:0.8rem;padding:0.3rem 0.8rem;"
+                                onclick="document.getElementById('orc-ai-box-orc-observacoes').style.display='none'">✕ Descartar</button>
+                        </div>
+                    </div>
+                    <div id="orc-step5-error" style="color:#ff5050;font-size:0.83rem;margin-top:0.5rem;display:none;"></div>
+                    <div style="margin-top:1.2rem;display:flex;gap:0.6rem;flex-wrap:wrap;align-items:center;">
+                        <button class="report-btn report-btn-secondary" onclick="orcGoStep(4)">← Voltar</button>
+                        <button class="report-btn" id="orc-btn-gerar" onclick="orcGerarPDF()">Gerar PDF →</button>
+                    </div>
+                </div>
+
+                <!-- ── BOX 6: Download ── -->
+                <div class="orc-step" id="orc-step-6" style="display:none;">
+                    <div class="orc-step-header">
+                        <div class="orc-step-num">6</div>
                         <div class="orc-step-title">Orçamento gerado com sucesso!</div>
                     </div>
                     <div class="orc-download-box">
@@ -1829,6 +2201,21 @@ git add . &amp;&amp; git commit -m &quot;&lt;tipo&gt;: &lt;descrição&gt;&quot;
                     </div>
                 </div>
 
+            <!-- datalist de prazos de pagamento — reutilizado por todos os inputs de prazo -->
+            <datalist id="orc-prazo-datalist">
+                <option value="À Vista">
+                <option value="28 Dias">
+                <option value="30 Dias">
+                <option value="45 Dias">
+                <option value="56 Dias">
+                <option value="60 Dias">
+                <option value="84 Dias">
+                <option value="90 Dias">
+                <option value="120 Dias">
+                <option value="150 Dias">
+                <option value="180 Dias">
+                <option value="210 Dias">
+            </datalist>
             </div>
         </section>
 
@@ -2091,7 +2478,11 @@ git add . &amp;&amp; git commit -m &quot;&lt;tipo&gt;: &lt;descrição&gt;&quot;
                     _usersLoaded = true;
                     loadAllUsers();
                 }
-                if (pageId === 'orcamentos') { checkGlobalAuth(); orcCheckAuth(); }
+                if (pageId === 'orcamentos') {
+                    checkGlobalAuth();
+                    const wf = document.getElementById('orc-workflow');
+                    if (!wf || wf.style.display === 'none') orcCheckAuth();
+                }
             });
         });
 
@@ -2331,9 +2722,18 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
             
             wrapper.appendChild(header);
             
-            // Texto da mensagem
+            // Texto da mensagem (renderiza Markdown básico)
             const content = document.createElement('div');
-            content.innerText = text;
+            content.style.lineHeight = '1.6';
+            content.innerHTML = text
+                .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+                .replace(/\*(.+?)\*/g,'<em>$1</em>')
+                .replace(/`(.+?)`/g,'<code style="background:rgba(255,255,255,0.1);padding:0.1em 0.3em;border-radius:3px;">$1</code>')
+                .replace(/^### (.+)$/gm,'<strong>$1</strong>')
+                .replace(/^## (.+)$/gm,'<strong style="font-size:1.05em">$1</strong>')
+                .replace(/^- (.+)$/gm,'&nbsp;• $1')
+                .replace(/\n/g,'<br>');
             wrapper.appendChild(content);
             
             // Container de Pensamento (escondido por padrão)
@@ -2618,7 +3018,7 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
             } catch { area.innerHTML = ''; }
         }
 
-        // ── Orçamentos ────────────────────────────────────────────────────
+        // ── Orçamentos — fluxo de 4 boxes ────────────────────────────
         let _orcPivotData = null;
 
         async function orcCheckAuth() {
@@ -2629,6 +3029,8 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
                     document.getElementById('orc-user-email').textContent = u.email;
                     document.getElementById('orc-login-gate').style.display = 'none';
                     document.getElementById('orc-workflow').style.display = 'block';
+                    orcPreencherValidade();
+                    aiVerificarStatus();
                     sessionStorage.removeItem('orc_auth_tried');
                 } else {
                     if (!sessionStorage.getItem('orc_auth_tried')) {
@@ -2645,39 +3047,393 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
             }
         }
 
-        async function orcProcessar() {
-            const url = document.getElementById('orc-sheet-url').value.trim();
-            const errEl = document.getElementById('orc-step1-error');
-            const btn   = document.getElementById('orc-btn-processar');
-            errEl.style.display = 'none';
-            if (!url) { errEl.textContent = 'Cole o link da planilha.'; errEl.style.display = 'block'; return; }
+        function orcGoStep(n) {
+            for (let i = 1; i <= 6; i++) {
+                const el = document.getElementById(`orc-step-${i}`);
+                if (!el) continue;
+                el.classList.remove('active', 'done');
+                if (i < n)      { el.style.display = 'block'; el.classList.add('done'); }
+                else if (i === n) { el.style.display = 'block'; el.classList.add('active'); }
+                else              { el.style.display = 'none'; }
+            }
+        }
 
-            btn.disabled = true; btn.textContent = 'Processando…';
+        // ── CEP ────────────────────────────────────────────────────────
+        function orcFormatCEP(el) {
+            let v = el.value.replace(/\D/g, '').slice(0, 8);
+            if (v.length > 5) v = v.slice(0, 5) + '-' + v.slice(5);
+            el.value = v;
+            if (v.replace(/\D/g,'').length === 8) orcBuscarCEP();
+        }
+
+        async function orcBuscarCEP() {
+            const cep  = document.getElementById('orc-cep').value.replace(/\D/g, '');
+            const msg  = document.getElementById('orc-cep-msg');
+            const btn  = document.getElementById('orc-btn-cep');
+            msg.style.display = 'none';
+            if (cep.length !== 8) {
+                msg.textContent = 'CEP deve ter 8 dígitos.';
+                msg.style.color = '#ff5050';
+                msg.style.display = 'block';
+                return;
+            }
+            btn.disabled = true; btn.textContent = '…';
             try {
-                const r = await fetch('/api/sheets/processar', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url }),
-                });
-                const data = await r.json();
-                if (!r.ok) {
-                    if (r.status === 401) { orcCheckAuth(); return; }
-                    errEl.textContent = data.detail || 'Erro ao processar planilha.';
-                    errEl.style.display = 'block';
+                const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+                const d = await r.json();
+                if (d.erro) {
+                    msg.textContent = 'CEP não encontrado.';
+                    msg.style.color = '#ff5050';
+                    msg.style.display = 'block';
                     return;
                 }
-                _orcPivotData = data;
-                orcRenderPreview(data);
-                document.getElementById('orc-step-1').classList.remove('active');
-                document.getElementById('orc-step-1').classList.add('done');
-                document.getElementById('orc-step-2').style.display = 'block';
-                document.getElementById('orc-step-2').classList.add('active');
-                document.getElementById('orc-step-3').style.display = 'none';
+                const partes = [d.logradouro, d.complemento, d.bairro, `${d.localidade}/${d.uf}`].filter(Boolean);
+                document.getElementById('orc-endereco').value = partes.join(' — ');
+                msg.textContent = `${d.localidade}/${d.uf} — ${d.bairro}`;
+                msg.style.color = 'var(--accent-color)';
+                msg.style.display = 'block';
             } catch(e) {
-                errEl.textContent = 'Erro de conexão.';
-                errEl.style.display = 'block';
+                msg.textContent = 'Erro ao consultar CEP.';
+                msg.style.color = '#ff5050';
+                msg.style.display = 'block';
             } finally {
-                btn.disabled = false; btn.textContent = 'Processar Planilha →';
+                btn.disabled = false; btn.textContent = 'Buscar';
+            }
+        }
+
+        // ── Validações Box 1 ───────────────────────────────────────────
+        function _validarCNPJ(cnpj) {
+            cnpj = cnpj.replace(/\D/g, '');
+            if (cnpj.length !== 14 || /^(\d)\1+$/.test(cnpj)) return false;
+            const calc = (n) => {
+                let s = 0, p = n - 7;
+                for (let i = 0; i < n; i++) {
+                    s += parseInt(cnpj[i]) * p--;
+                    if (p < 2) p = 9;
+                }
+                const r = s % 11;
+                return r < 2 ? 0 : 11 - r;
+            };
+            return calc(12) === parseInt(cnpj[12]) && calc(13) === parseInt(cnpj[13]);
+        }
+
+        function _validarEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
+        function _validarTel(t)   { return /^[\d\s()\-+]{8,}$/.test(t); }
+
+        function orcStep1Next() {
+            const name  = document.getElementById('orc-client-name').value.trim();
+            const cnpj  = document.getElementById('orc-client-cnpj').value.trim();
+            const email = document.getElementById('orc-email').value.trim();
+            const tel   = document.getElementById('orc-telefone').value.trim();
+            const errEl = document.getElementById('orc-step1-error');
+            errEl.style.display = 'none';
+            const errs = [];
+            if (!name)                          errs.push('Informe o nome do cliente.');
+            if (cnpj  && !_validarCNPJ(cnpj))  errs.push('CNPJ inválido.');
+            if (email && !_validarEmail(email)) errs.push('E-mail inválido.');
+            if (tel   && !_validarTel(tel))     errs.push('Telefone inválido.');
+            if (errs.length) {
+                errEl.textContent = errs.join(' ');
+                errEl.style.display = 'block';
+                return;
+            }
+            orcGoStep(2);
+        }
+
+        function orcSwitchTab(mode) {
+            document.getElementById('orc-mode-link').style.display  = mode === 'link'  ? 'block' : 'none';
+            document.getElementById('orc-mode-paste').style.display = mode === 'paste' ? 'block' : 'none';
+            document.getElementById('orc-tab-link').classList.toggle('active',  mode === 'link');
+            document.getElementById('orc-tab-paste').classList.toggle('active', mode === 'paste');
+        }
+
+        function orcSetStatus(state, msg) {
+            const bar = document.getElementById('orc-status-bar');
+            bar.className = 'orc-status-bar';
+            if (state === 'idle') { bar.style.display = 'none'; return; }
+            bar.style.display = 'flex';
+            if (state === 'loading') {
+                bar.classList.add('s-loading');
+                bar.innerHTML = `<span class="orc-spin">⟳</span> ${msg}`;
+            } else if (state === 'ok') {
+                bar.classList.add('s-ok');
+                bar.innerHTML = `✓ ${msg}`;
+            } else {
+                bar.classList.add('s-error');
+                bar.innerHTML = `✗ ${msg}`;
+            }
+        }
+
+        async function _orcChamarAPI(endpoint, body, btn, btnLabel) {
+            const ctrl  = new AbortController();
+            const timer = setTimeout(() => ctrl.abort(), 60000);
+            orcSetStatus('loading', 'Conectando…');
+            btn.disabled = true; btn.textContent = 'Aguarde…';
+            try {
+                const r = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                    signal: ctrl.signal,
+                });
+                let data;
+                try { data = await r.json(); }
+                catch { data = { detail: `Resposta inválida do servidor (HTTP ${r.status}).` }; }
+
+                if (!r.ok) {
+                    if (r.status === 401) {
+                        orcSetStatus('error', 'Sessão expirada — redirecionando para login…');
+                        setTimeout(orcCheckAuth, 1000);
+                    } else {
+                        orcSetStatus('error', data.detail || `Erro HTTP ${r.status}.`);
+                    }
+                    return null;
+                }
+                return data;
+            } catch(e) {
+                if (e.name === 'AbortError')
+                    orcSetStatus('error', 'Tempo esgotado (60s). Tente colar os dados manualmente.');
+                else
+                    orcSetStatus('error', `Erro de conexão: ${e.message || 'verifique o servidor.'}`);
+                return null;
+            } finally {
+                clearTimeout(timer);
+                btn.disabled = false; btn.textContent = btnLabel;
+            }
+        }
+
+        async function orcProcessarLink() {
+            const url = document.getElementById('orc-sheet-url').value.trim();
+            const btn = document.getElementById('orc-btn-processar');
+            if (!url) { orcSetStatus('error', 'Cole o link da planilha.'); return; }
+            const data = await _orcChamarAPI('/api/sheets/processar', { url }, btn, 'Processar Planilha');
+            if (data) { _orcPivotData = data; orcRenderPreview(data); }
+        }
+
+        async function orcProcessarTexto() {
+            const texto = document.getElementById('orc-sheet-texto').value.trim();
+            const btn   = document.getElementById('orc-btn-processar-texto');
+            if (!texto) { orcSetStatus('error', 'Cole os dados da planilha.'); return; }
+            const data = await _orcChamarAPI('/api/sheets/processar-texto', { texto }, btn, 'Processar Dados');
+            if (data) { _orcPivotData = data; orcRenderPreview(data); }
+        }
+
+        function orcToggleTable() {
+            const wrap = document.getElementById('orc-table-wrap');
+            const btn  = document.getElementById('orc-collapse-btn');
+            const open = wrap.style.display === 'none';
+            wrap.style.display = open ? 'block' : 'none';
+            btn.textContent    = open ? 'Ocultar itens ▴' : 'Ver itens ▾';
+        }
+
+        // ── Markdown toolbar helpers ─────────────────────────────────────────
+        function orcMd(id, before, after, placeholder) {
+            const ta  = document.getElementById(id);
+            const s   = ta.selectionStart, e = ta.selectionEnd;
+            const sel = ta.value.slice(s, e) || placeholder;
+            const ins = before + sel + after;
+            ta.setRangeText(ins, s, e, 'select');
+            ta.focus();
+            // posiciona seleção sobre o texto (não o marcador)
+            ta.selectionStart = s + before.length;
+            ta.selectionEnd   = s + before.length + sel.length;
+        }
+        function orcMdPfx(id, prefix) {
+            const ta  = document.getElementById(id);
+            const s   = ta.selectionStart;
+            const sol = ta.value.lastIndexOf('\n', s - 1) + 1; // início da linha
+            ta.setRangeText(prefix, sol, sol, 'end');
+            ta.focus();
+        }
+        function orcMdIns(id, text) {
+            const ta = document.getElementById(id);
+            const s  = ta.selectionStart;
+            ta.setRangeText(text, s, s, 'end');
+            ta.focus();
+        }
+
+        // ── Ollama status widget ──────────────────────────────────────────────
+        async function aiVerificarStatus() {
+            const dot  = document.getElementById('ai-dot');
+            const txt  = document.getElementById('ai-status-txt');
+            const btn  = document.getElementById('ai-load-btn');
+            if (!dot) return;
+            dot.className = 'ai-dot spin'; txt.textContent = 'Verificando IA…'; btn.style.display = 'none';
+            try {
+                const r    = await fetch('/api/ollama/status');
+                const data = await r.json();
+                if (!data.online) {
+                    dot.className = 'ai-dot off';
+                    txt.textContent = 'Ollama offline';
+                    btn.style.display = 'none';
+                } else if (!data.carregado) {
+                    dot.className = 'ai-dot warn';
+                    txt.textContent = `Modelo não carregado (${data.model})`;
+                    btn.textContent = 'Carregar'; btn.style.display = 'inline-block';
+                } else {
+                    dot.className = 'ai-dot ok';
+                    txt.textContent = `IA pronta — ${data.model}`;
+                    btn.style.display = 'none';
+                }
+            } catch {
+                dot.className = 'ai-dot off';
+                txt.textContent = 'Ollama offline';
+            }
+        }
+
+        async function aiCarregarModelo() {
+            const dot = document.getElementById('ai-dot');
+            const txt = document.getElementById('ai-status-txt');
+            const btn = document.getElementById('ai-load-btn');
+            dot.className = 'ai-dot spin'; txt.textContent = 'Carregando modelo…'; btn.disabled = true;
+            try {
+                const r = await fetch('/api/ollama/carregar', { method: 'POST' });
+                if (r.ok) {
+                    dot.className = 'ai-dot ok';
+                    txt.textContent = 'IA pronta — llama3.1:8b';
+                    btn.style.display = 'none';
+                } else {
+                    const d = await r.json();
+                    dot.className = 'ai-dot warn';
+                    txt.textContent = `Erro: ${d.detail || 'falha ao carregar'}`;
+                    btn.disabled = false;
+                }
+            } catch(e) {
+                dot.className = 'ai-dot off';
+                txt.textContent = `Erro de conexão: ${e.message}`;
+                btn.disabled = false;
+            }
+        }
+
+        // Verifica status quando a seção orcamentos é exibida
+
+        // ── Melhorador de texto com Ollama ──────────────────────────────────
+        function orcSetMode(taId, mode, btn) {
+            document.querySelectorAll(`#orc-ai-modebar-${taId} .orc-ai-mode-btn`).forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const wrap = document.getElementById(`orc-ai-instrucao-wrap-${taId}`);
+            if (wrap) wrap.style.display = mode === 'livre' ? 'block' : 'none';
+        }
+
+        function orcModoHelp() {
+            alert(
+`Modos de melhoria com IA:
+
+🔹 Mínimo
+   Corrige erros de ortografia e gramática (português). Formata em Markdown básico. Não altera o conteúdo original.
+
+🔹 Padrão
+   Reescreve em tom profissional, organiza em seções com títulos e listas. Preserva todas as informações técnicas.
+
+🔹 Livre
+   Você define a instrução. Use o campo de instrução abaixo, ou escreva no próprio texto começando com "Ollama:".
+
+   Exemplos:
+   • No campo instrução: "descreva que o projeto visa iluminação moderna e eficiente"
+   • No texto: "Ollama: amplie descrevendo os benefícios de cada ambiente"`
+            );
+        }
+
+        async function orcMelhorarTexto(taId) {
+            const ta  = document.getElementById(taId);
+            const btn = document.getElementById(`orc-ai-btn-${taId}`);
+            const box = document.getElementById(`orc-ai-box-${taId}`);
+            const pre = document.getElementById(`orc-ai-text-${taId}`);
+            let texto = ta.value.trim();
+            if (!texto) { alert('Digite algum texto antes de melhorar.'); return; }
+
+            // Lê o modo ativo
+            const activeBtn = document.querySelector(`#orc-ai-modebar-${taId} .orc-ai-mode-btn.active`);
+            let modo = activeBtn ? activeBtn.textContent.trim().toLowerCase() : 'padrão';
+            modo = modo === 'mínimo' ? 'minimo' : modo === 'padrão' ? 'completo' : 'livre';
+
+            // Auto-detecta "Ollama: instrução" no início do texto
+            let instrucao = '';
+            const primeiraLinha = texto.split('\n')[0].trim();
+            if (/^ollama[:\s]/i.test(primeiraLinha)) {
+                instrucao = primeiraLinha.replace(/^ollama[:\s]*/i, '').trim();
+                texto = texto.split('\n').slice(1).join('\n').trim();
+                modo = 'livre';
+            }
+
+            // Se modo livre, pega instrução do campo
+            if (modo === 'livre' && !instrucao) {
+                const inp = document.getElementById(`orc-ai-instrucao-${taId}`);
+                instrucao = inp ? inp.value.trim() : '';
+                if (!instrucao) { alert('No modo Livre, preencha o campo de instrução (ou escreva "Ollama: sua instrução" no texto).'); return; }
+            }
+
+            box.style.display = 'block';
+            box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            const orig = btn.textContent;
+            btn.disabled = true; btn.textContent = '⏳ Processando…';
+
+            try {
+                const st = await fetch('/api/ollama/status').then(r => r.json());
+                if (!st.carregado) {
+                    pre.innerHTML = '<span class="orc-spin" style="font-size:1.1rem;">⟳</span>  Carregando modelo (~40s)…';
+                    await fetch('/api/ollama/carregar', { method: 'POST' });
+                }
+            } catch { /* segue */ }
+
+            pre.innerHTML = '<span class="orc-spin" style="font-size:1.1rem;">⟳</span>  Ollama está processando…';
+
+            const ctrl  = new AbortController();
+            const timer = setTimeout(() => ctrl.abort(), 90000);
+            try {
+                const r = await fetch('/api/ollama/melhorar-texto', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ texto, modo, instrucao }),
+                    signal: ctrl.signal,
+                });
+                const data = await r.json();
+                if (!r.ok) { pre.textContent = `✗ Erro: ${data.detail || `HTTP ${r.status}`}`; return; }
+                pre.textContent = data.sugestao;
+            } catch(e) {
+                pre.textContent = e.name === 'AbortError'
+                    ? '✗ Tempo esgotado (90s). Tente novamente — o modelo já está carregado.'
+                    : `✗ Erro: ${e.message || 'verifique o servidor.'}`;
+            } finally {
+                clearTimeout(timer);
+                btn.disabled = false; btn.textContent = orig;
+            }
+        }
+
+        function orcAprovarSugestao(taId) {
+            const ta  = document.getElementById(taId);
+            const pre = document.getElementById(`orc-ai-text-${taId}`);
+            const box = document.getElementById(`orc-ai-box-${taId}`);
+            ta.value = pre.textContent;
+            box.style.display = 'none';
+            ta.focus();
+        }
+
+        // ── Pré-preenchimento de validade (+7 dias) ──────────────────────────
+        function orcPreencherValidade() {
+            const el = document.getElementById('orc-validade');
+            if (el && !el.value) {
+                const d = new Date();
+                d.setDate(d.getDate() + 7);
+                el.value = d.toLocaleDateString('pt-BR');
+            }
+        }
+
+        function orcToggleExemplo() {
+            const wrap = document.getElementById('orc-exemplo-wrap');
+            const btn  = document.getElementById('orc-exemplo-btn');
+            const open = wrap.style.display === 'none';
+            wrap.style.display = open ? 'block' : 'none';
+            btn.textContent    = open ? 'Ocultar formato ▴' : 'Ver formato esperado ▾';
+        }
+
+        async function orcCriarTemplate() {
+            const url = document.getElementById('orc-sheet-url').value.trim();
+            const btn = document.getElementById('orc-btn-criar-template');
+            if (!url) { orcSetStatus('error', 'Cole o link da planilha antes de criar o template.'); return; }
+            const data = await _orcChamarAPI('/api/sheets/criar-template', { url }, btn, 'Criar Aba Template');
+            if (data) {
+                orcSetStatus('ok', `✓ Aba "${data.title}" criada! Preencha os dados nela e clique em Processar Planilha (selecione a aba no link).`);
             }
         }
 
@@ -2693,37 +3449,86 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
                 tbody.appendChild(tr);
             }
             document.getElementById('orc-total-value').textContent = fmtBRL(data.total);
+            // tabela começa recolhida
+            document.getElementById('orc-table-wrap').style.display = 'none';
+            document.getElementById('orc-collapse-btn').textContent = 'Ver itens ▾';
+            document.getElementById('orc-preview-wrap').style.display = 'block';
+            document.getElementById('orc-btn-step2-next').disabled = false;
+            orcSetStatus('ok', `${data.items.length} itens encontrados — Total: ${fmtBRL(data.total)}`);
+        }
 
-            // Render editable payment rows
-            const pagWrap = document.getElementById('orc-pagamento-wrap');
+        function orcStep2Next() {
+            if (!_orcPivotData) return;
+            document.getElementById('orc-total-step3').textContent = fmtBRL(_orcPivotData.total);
             const pagRows = document.getElementById('orc-pagamento-rows');
             pagRows.innerHTML = '';
-            if (data.pagamento && data.pagamento.length > 0) {
-                const labels = ['Entrada', ...data.pagamento.slice(1).map((_, i) => `${i+1}ª Parcela`)];
-                data.pagamento.forEach((p, i) => {
-                    const row = document.createElement('div');
-                    row.style.cssText = 'display:flex;gap:0.5rem;align-items:center;';
-                    row.innerHTML = `
-                        <span style="min-width:110px;font-size:0.82rem;color:#888;">${labels[i]}</span>
-                        <span style="min-width:80px;font-size:0.82rem;color:#555;">${p.prazo}</span>
-                        <input class="orc-input" data-pag-idx="${i}" data-pag-field="valor" type="number"
-                            step="0.01" value="${p.valor}" style="width:140px;margin-bottom:0;font-size:0.82rem;">`;
-                    pagRows.appendChild(row);
-                });
-                pagWrap.style.display = 'block';
+            if (_orcPivotData.pagamento && _orcPivotData.pagamento.length > 0) {
+                const labels = ['Entrada', ..._orcPivotData.pagamento.slice(1).map((_, i) => `${i+1}ª Parcela`)];
+                _orcPivotData.pagamento.forEach((p, i) => orcAddPagamentoRow(labels[i], p.prazo, p.valor));
+            }
+            orcGoStep(4);
+        }
+
+        // prazo padrão incremental: Entrada = "À Vista", demais = índice × 28 Dias
+        function _prazoDefault(idx) {
+            if (idx === 0) return 'À Vista';
+            return `${idx * 28} Dias`;
+        }
+
+        function orcAddPagamentoRow(label, prazo, valor) {
+            const pagRows   = document.getElementById('orc-pagamento-rows');
+            const idx       = pagRows.children.length;
+            const lbl       = label || (idx === 0 ? 'Entrada' : `${idx}ª Parcela`);
+            const defaultPrazo = prazo || _prazoDefault(idx);
+
+            // herda o valor da última parcela se nenhum valor foi passado explicitamente
+            let defaultValor = valor;
+            if (defaultValor === undefined || defaultValor === null || defaultValor === '') {
+                const lastValorEl = pagRows.querySelector(':scope > div:last-child [data-pag-field="valor"]');
+                if (lastValorEl) defaultValor = lastValorEl.value;
+            }
+
+            const row = document.createElement('div');
+            row.style.cssText = 'display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;';
+            row.innerHTML = `
+                <span style="min-width:100px;font-size:0.82rem;color:#888;">${lbl}</span>
+                <input class="orc-input" data-pag-field="prazo" list="orc-prazo-datalist"
+                    value="${defaultPrazo}" placeholder="ex: 45 Dias"
+                    style="width:130px;margin-bottom:0;font-size:0.82rem;">
+                <input class="orc-input" data-pag-field="valor" type="number" step="0.01" value="${defaultValor || ''}"
+                    oninput="orcAtualizarSomaParcelas()"
+                    style="width:140px;margin-bottom:0;font-size:0.82rem;" placeholder="0,00">
+                <button onclick="this.parentElement.remove(); orcAtualizarSomaParcelas();"
+                    style="background:none;border:none;color:#ff6b6b;cursor:pointer;font-size:0.95rem;padding:0.2rem;">✕</button>`;
+            pagRows.appendChild(row);
+            orcAtualizarSomaParcelas();
+        }
+
+        function orcAtualizarSomaParcelas() {
+            const el    = document.getElementById('orc-pag-summary');
+            const total = _orcPivotData ? _orcPivotData.total : 0;
+            const soma  = orcGetPagamento().reduce((s, p) => s + p.valor, 0);
+            if (soma === 0) { el.style.display = 'none'; return; }
+            const diff = Math.abs(soma - total);
+            el.style.display = 'block';
+            if (diff < 0.01) {
+                el.style.cssText = 'display:block;margin-top:0.8rem;font-size:0.82rem;padding:0.5rem 0.8rem;border-radius:6px;border:1px solid rgba(31,255,140,0.3);color:var(--accent-color);background:rgba(31,255,140,0.05);';
+                el.textContent = `✓ Soma das parcelas: ${fmtBRL(soma)} — bate com o total.`;
             } else {
-                pagWrap.style.display = 'none';
+                const sinal = soma > total ? '+' : '-';
+                el.style.cssText = 'display:block;margin-top:0.8rem;font-size:0.82rem;padding:0.5rem 0.8rem;border-radius:6px;border:1px solid rgba(255,196,0,0.35);color:#ffc400;background:rgba(255,196,0,0.06);';
+                el.textContent = `⚠ Soma das parcelas: ${fmtBRL(soma)} — diferença de ${sinal}${fmtBRL(diff)} em relação ao total (${fmtBRL(total)}).`;
             }
         }
 
         function orcGetPagamento() {
-            const inputs = document.querySelectorAll('#orc-pagamento-rows input[data-pag-idx]');
-            if (!inputs.length || !_orcPivotData.pagamento) return _orcPivotData.pagamento || [];
-            const prazoLabels = _orcPivotData.pagamento.map(p => p.prazo);
-            return Array.from(inputs).map((inp, i) => ({
-                prazo: prazoLabels[i],
-                valor: parseFloat(inp.value) || 0,
-            })).filter(p => p.valor > 0);
+            const result = [];
+            document.querySelectorAll('#orc-pagamento-rows > div').forEach(row => {
+                const prazo = row.querySelector('[data-pag-field="prazo"]')?.value || '';
+                const valor = parseFloat(row.querySelector('[data-pag-field="valor"]')?.value) || 0;
+                if (valor > 0) result.push({ prazo, valor });
+            });
+            return result;
         }
 
         async function orcGerarPDF() {
@@ -2731,10 +3536,9 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
             const cnpj  = document.getElementById('orc-client-cnpj').value.trim();
             const valid = document.getElementById('orc-validade').value.trim();
             const obs   = document.getElementById('orc-observacoes').value.trim();
-            const errEl = document.getElementById('orc-step2-error');
+            const errEl = document.getElementById('orc-step5-error');
             const btn   = document.getElementById('orc-btn-gerar');
             errEl.style.display = 'none';
-            if (!name) { errEl.textContent = 'Informe o nome do cliente.'; errEl.style.display = 'block'; return; }
             if (!_orcPivotData) return;
 
             btn.disabled = true; btn.textContent = 'Gerando PDF…';
@@ -2743,32 +3547,32 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        items:        _orcPivotData.items,
-                        total:        _orcPivotData.total,
-                        client_name:  name,
-                        client_cnpj:  cnpj,
-                        validade:     valid,
-                        observacoes:  obs,
-                        pagamento:    orcGetPagamento(),
+                        items:              _orcPivotData.items,
+                        total:              _orcPivotData.total,
+                        client_name:        name,
+                        client_cnpj:        cnpj,
+                        validade:           valid,
+                        descricao_projeto:  document.getElementById('orc-descricao-projeto').value.trim(),
+                        observacoes:        obs,
+                        pagamento:          orcGetPagamento(),
+                        endereco:           document.getElementById('orc-endereco').value.trim(),
+                        responsavel:        document.getElementById('orc-responsavel').value.trim(),
+                        telefone:           document.getElementById('orc-telefone').value.trim(),
+                        email_contato:      document.getElementById('orc-email').value.trim(),
                     }),
                 });
                 const data = await r.json();
                 if (!r.ok) {
                     errEl.textContent = data.detail || 'Erro ao gerar PDF.';
-                    errEl.style.display = 'block';
-                    return;
+                    errEl.style.display = 'block'; return;
                 }
                 const dlLink = document.getElementById('orc-dl-link');
                 dlLink.href     = `/api/orcamento/download/${data.token}`;
                 dlLink.download = data.filename;
                 document.getElementById('orc-dl-msg').textContent = `PDF do orçamento para ${name} pronto.`;
-                document.getElementById('orc-step-2').classList.remove('active');
-                document.getElementById('orc-step-2').classList.add('done');
-                document.getElementById('orc-step-3').style.display = 'block';
-                document.getElementById('orc-step-3').classList.add('active');
+                orcGoStep(6);
             } catch(e) {
-                errEl.textContent = 'Erro de conexão.';
-                errEl.style.display = 'block';
+                errEl.textContent = 'Erro de conexão.'; errEl.style.display = 'block';
             } finally {
                 btn.disabled = false; btn.textContent = 'Gerar PDF →';
             }
@@ -2776,21 +3580,25 @@ thead tr { background-color: ${c.primary}; color: #FFFFFF; }`;
 
         function orcReset() {
             _orcPivotData = null;
-            document.getElementById('orc-sheet-url').value = '';
-            document.getElementById('orc-client-name').value = '';
-            document.getElementById('orc-client-cnpj').value = '';
-            document.getElementById('orc-validade').value = '';
-            document.getElementById('orc-observacoes').value = '';
+            ['orc-sheet-url', 'orc-sheet-texto', 'orc-client-name', 'orc-client-cnpj',
+             'orc-validade', 'orc-descricao-projeto', 'orc-observacoes', 'orc-endereco',
+             'orc-responsavel', 'orc-telefone', 'orc-email'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
             document.getElementById('orc-pagamento-rows').innerHTML = '';
-            document.getElementById('orc-pagamento-wrap').style.display = 'none';
-            document.getElementById('orc-step1-error').style.display = 'none';
-            document.getElementById('orc-step2-error').style.display = 'none';
-            document.getElementById('orc-step-1').classList.remove('done');
-            document.getElementById('orc-step-1').classList.add('active');
-            document.getElementById('orc-step-2').style.display = 'none';
-            document.getElementById('orc-step-2').classList.remove('active', 'done');
-            document.getElementById('orc-step-3').style.display = 'none';
-            document.getElementById('orc-step-3').classList.remove('active');
+            document.getElementById('orc-pag-summary').style.display = 'none';
+            document.getElementById('orc-preview-wrap').style.display = 'none';
+            document.getElementById('orc-table-wrap').style.display = 'none';
+            document.getElementById('orc-btn-step2-next').disabled = true;
+            ['orc-step1-error', 'orc-step5-error'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+            orcSetStatus('idle');
+            orcSwitchTab('link');
+            orcGoStep(1);
+            orcPreencherValidade();
         }
 
         function fmtBRL(v) {

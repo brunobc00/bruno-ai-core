@@ -8,6 +8,7 @@ from datetime import date, timedelta
 from pathlib import Path
 import subprocess
 import httpx
+import json
 import os
 import re
 import uuid
@@ -538,7 +539,7 @@ async def auth_google():
         "client_id":     GOOGLE_CLIENT_ID,
         "redirect_uri":  GOOGLE_REDIRECT_URI,
         "response_type": "code",
-        "scope":         "openid email profile https://www.googleapis.com/auth/spreadsheets.readonly",
+        "scope":         "openid email profile https://www.googleapis.com/auth/spreadsheets",
         "access_type":   "offline",
         "prompt":        "select_account",
     })
@@ -608,6 +609,74 @@ def _fmt_brl(v: float) -> str:
     return f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
+def _col_letter(n: int) -> str:
+    """Converte número de coluna (1-based) em letra(s): 1→A, 26→Z, 27→AA."""
+    result = ""
+    while n > 0:
+        n, r = divmod(n - 1, 26)
+        result = chr(65 + r) + result
+    return result
+
+
+def _parse_sheet_data(rows: list, headers_row: list) -> dict:
+    """Processa linhas brutas da Sheets API e retorna items/total/pagamento."""
+    def find_col(candidates: list[str], default: int) -> int:
+        for name in candidates:
+            for i, h in enumerate(headers_row):
+                if h.strip().lower() == name.lower():
+                    return i
+        return default
+
+    col_amb   = find_col(["AMBIENTE", "ambiente"], 2)
+    col_grp   = find_col(["GRUPO", "grupo"], 8)
+    col_qtd   = find_col(["Quantidade", "QTD", "quantidade"], 5)
+    col_vunit = find_col(["valor unit c desconto", "valor unitario c desc", "valor unit. c/desc",
+                           "Valor Unitário", "valor unitario", "vunit"], 19)
+    col_vtot  = find_col(["valor total c/desc", "valor total c desc",
+                           "Valor Total", "valor total", "vtotal"], 20)
+
+    # Busca colunas de pagamento por nome, com fallback nos índices do formato antigo
+    header_lower = {h.strip().lower(): i for i, h in enumerate(headers_row)}
+    PAYMENT_LABELS   = ["À Vista", "28 Dias", "30 Dias", "60 Dias", "90 Dias", "120 Dias", "150 Dias", "180 Dias", "210 Dias"]
+    PAYMENT_FALLBACK = {"À Vista": 29, "28 Dias": -1, "30 Dias": 30, "60 Dias": 31,
+                        "90 Dias": 32, "120 Dias": 33, "150 Dias": 34, "180 Dias": 35, "210 Dias": 36}
+    payment_cols = [header_lower.get(lbl.lower(), PAYMENT_FALLBACK.get(lbl, -1)) for lbl in PAYMENT_LABELS]
+    payment_sums = [0.0] * len(PAYMENT_LABELS)
+
+    pivot: dict = OrderedDict()
+    for row in rows:
+        get = lambda i, r=row: r[i].strip() if i < len(r) else ""
+        ambiente = get(col_amb)
+        grupo    = get(col_grp)
+        if not ambiente or not grupo:
+            continue
+        try:
+            qtd = int(get(col_qtd).replace(",", "").split(".")[0])
+        except (ValueError, IndexError):
+            qtd = 0
+        if qtd <= 0:
+            continue
+        vunit = _parse_brl(get(col_vunit))
+        vtot  = _parse_brl(get(col_vtot))
+        key = (ambiente, grupo)
+        if key not in pivot:
+            pivot[key] = {"ambiente": ambiente, "grupo": grupo, "qtd": 0, "vunit": vunit, "vtotal": 0.0}
+        pivot[key]["qtd"]    += qtd
+        pivot[key]["vtotal"] += vtot
+        for i, col_idx in enumerate(payment_cols):
+            if col_idx >= 0:
+                payment_sums[i] += _parse_brl(get(col_idx))
+
+    items = list(pivot.values())
+    total = sum(i["vtotal"] for i in items)
+    pagamento = [
+        {"prazo": label, "valor": round(v, 2)}
+        for label, v in zip(PAYMENT_LABELS, payment_sums)
+        if v > 0
+    ]
+    return {"items": items, "total": total, "pagamento": pagamento}
+
+
 @app.post("/api/sheets/processar")
 async def sheets_processar(body: SheetsRequest, request: Request):
     session = _get_session(request)
@@ -619,9 +688,43 @@ async def sheets_processar(body: SheetsRequest, request: Request):
         raise HTTPException(status_code=400, detail="URL inválida")
     sid = m.group(1)
 
-    async with httpx.AsyncClient(timeout=30) as client:
+    # Extrai gid — pode estar em ?gid= ou no fragmento #gid=
+    gid_m = re.search(r"gid=(\d+)", body.url)
+    target_gid = int(gid_m.group(1)) if gid_m else 0
+
+    async with httpx.AsyncClient(timeout=45) as client:
+        # 1) Busca metadata: nome da aba e número real de colunas
+        meta = await client.get(
+            f"https://sheets.googleapis.com/v4/spreadsheets/{sid}?fields=sheets.properties",
+            headers={"Authorization": f"Bearer {session['access_token']}"},
+        )
+        if meta.status_code == 401:
+            raise HTTPException(status_code=401, detail="Token expirado. Faça login novamente.")
+        meta.raise_for_status()
+
+        sheet_title = None
+        col_count   = 50  # fallback
+        sheets_list = meta.json().get("sheets", [])
+        for sh in sheets_list:
+            props = sh.get("properties", {})
+            if props.get("sheetId") == target_gid:
+                sheet_title = props.get("title", "")
+                col_count   = props.get("gridProperties", {}).get("columnCount", 50)
+                break
+        # Se o gid não foi encontrado, usa a primeira aba
+        if sheet_title is None and sheets_list:
+            props       = sheets_list[0].get("properties", {})
+            sheet_title = props.get("title", "")
+            col_count   = props.get("gridProperties", {}).get("columnCount", 50)
+
+        # 2) Constrói o range dinâmico com todas as colunas reais da aba
+        last_col    = _col_letter(col_count)
+        sheet_range = f"'{sheet_title}'!A:{last_col}" if sheet_title else f"A:{last_col}"
+
+        # 3) Busca os dados — range precisa de URL-encode (nomes de aba com espaços)
+        encoded_range = urllib.parse.quote(sheet_range, safe="!:'")
         resp = await client.get(
-            f"https://sheets.googleapis.com/v4/spreadsheets/{sid}/values/A:AJ",
+            f"https://sheets.googleapis.com/v4/spreadsheets/{sid}/values/{encoded_range}",
             headers={"Authorization": f"Bearer {session['access_token']}"},
         )
         if resp.status_code == 401:
@@ -630,81 +733,199 @@ async def sheets_processar(body: SheetsRequest, request: Request):
 
     rows = resp.json().get("values", [])
     if len(rows) < 2:
-        raise HTTPException(status_code=400, detail="Planilha vazia")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Aba '{sheet_title}' está vazia ou sem dados suficientes."
+        )
 
-    headers = rows[0]
-
-    def find_col(candidates: list[str], default: int) -> int:
-        for name in candidates:
-            for i, h in enumerate(headers):
-                if h.strip().lower() == name.lower():
-                    return i
-        return default
-
-    col_amb   = find_col(["AMBIENTE", "ambiente"], 2)
-    col_grp   = find_col(["GRUPO", "grupo"], 8)
-    col_qtd   = find_col(["Quantidade", "QTD", "quantidade"], 5)
-    col_vunit = find_col(["valor unit c desconto", "valor unitario c desc", "valor unit. c/desc"], 19)
-    col_vtot  = find_col(["valor total c/desc", "valor total c desc"], 20)
-
-    # Payment columns: ENT(29), 30d(30), 60d(31), 90d(32), 120d(33), 150d(34), 180d(35), 210d(36)
-    PAYMENT_LABELS = ["À Vista", "30 Dias", "60 Dias", "90 Dias", "120 Dias", "150 Dias", "180 Dias", "210 Dias"]
-    PAYMENT_COLS   = [29, 30, 31, 32, 33, 34, 35, 36]
-    payment_sums   = [0.0] * len(PAYMENT_COLS)
-
-    pivot: dict = OrderedDict()
-    for row in rows[1:]:
-        def cell(i: int) -> str:
-            return row[i].strip() if i < len(row) else ""
-
-        ambiente = cell(col_amb)
-        grupo    = cell(col_grp)
-        if not ambiente or not grupo:
-            continue
-
-        try:
-            qtd = int(cell(col_qtd).replace(",", "").split(".")[0])
-        except (ValueError, IndexError):
-            qtd = 0
-        if qtd <= 0:
-            continue
-
-        vunit = _parse_brl(cell(col_vunit))
-        vtot  = _parse_brl(cell(col_vtot))
-
-        key = (ambiente, grupo)
-        if key not in pivot:
-            pivot[key] = {"ambiente": ambiente, "grupo": grupo, "qtd": 0, "vunit": vunit, "vtotal": 0.0}
-        pivot[key]["qtd"]    += qtd
-        pivot[key]["vtotal"] += vtot
-
-        for i, col_idx in enumerate(PAYMENT_COLS):
-            payment_sums[i] += _parse_brl(cell(col_idx))
-
-    items = list(pivot.values())
-    total = sum(i["vtotal"] for i in items)
-
-    pagamento = [
-        {"prazo": label, "valor": round(v, 2)}
-        for label, v in zip(PAYMENT_LABELS, payment_sums)
-        if v > 0
-    ]
-
-    return {"items": items, "total": total, "pagamento": pagamento}
+    result = _parse_sheet_data(rows[1:], rows[0])
+    if not result["items"]:
+        header_sample = " | ".join(h.strip() for h in rows[0][:12] if h.strip()) or "(sem cabeçalho)"
+        raise HTTPException(
+            status_code=422,
+            detail=f"Nenhum item encontrado na aba '{sheet_title}'. Cabeçalhos detectados: [{header_sample}]. Verifique se as colunas AMBIENTE e GRUPO existem e se há linhas com Quantidade > 0."
+        )
+    return result
 
 
-_NOTAS_TECNICAS = """\
-## 🔍 Notas Técnicas e Observações
+class SheetsPasteRequest(BaseModel):
+    texto: str
 
-1.  **Tecnologia de LED Integrado e Manutenção:** Todos os spots, balizadores e embutidos de solo especificados utilizam tecnologia de **LED Integrado**. Nestes itens, o **driver (fonte) não é integrado**, o que garante extrema facilidade em eventuais manutenções futuras, permitindo a substituição apenas do driver sem necessidade de trocar a peça inteira.
-2.  **Conformidade NBR 5410 (Segurança):** Para as áreas molhadas, o sistema utiliza alimentação de **Extra Baixa Tensão**, prevenindo riscos de choque elétrico conforme exigência de segurança.
-3.  **Sistemas Completos:** O orçamento contempla o fornecimento de todos os drivers e fontes de alimentação necessários para o funcionamento dos perfis de LED e sistemas de extra baixa tensão.
-4.  **Adequação de Fachos:** Todos os spots fornecidos terão os fachos de luz adequados ao seu ambiente específico, garantindo conforto visual e o efeito arquitetônico planejado.
-5.  **Garantia de Fábrica:**
-    *   **5 Anos de Garantia:** Toda a linha de Jardim (balizadores, espetos, embutidos de solo) e todos os Spots de LED.
-    *   **2 Anos de Garantia:** Linha de Arandelas e Lâmpadas LED.
-6.  **Conformidade com Projeto:** Todos os itens foram selecionados para estarem em conformidade com o projeto apresentado.
-"""
+
+@app.post("/api/sheets/processar-texto")
+async def sheets_processar_texto(body: SheetsPasteRequest, request: Request):
+    session = _get_session(request)
+    if not session:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    raw = body.texto.replace('\r\n', '\n').replace('\r', '\n').strip()
+    lines = raw.splitlines()
+    if len(lines) < 2:
+        raise HTTPException(status_code=400, detail="Dados insuficientes — cole a planilha incluindo o cabeçalho.")
+
+    rows = [line.split('\t') for line in lines]
+    result = _parse_sheet_data(rows[1:], rows[0])
+    if not result["items"]:
+        raise HTTPException(
+            status_code=422,
+            detail="Nenhum item encontrado. Verifique se as colunas AMBIENTE e GRUPO estão presentes e se há linhas com Quantidade > 0."
+        )
+    return result
+
+
+_TEMPLATE_HEADERS = ["AMBIENTE", "GRUPO", "Quantidade", "Valor Unitário", "Valor Total"]
+_TEMPLATE_EXAMPLE = ["Sala", "Spot LED", "4", "300,00", "1.200,00"]
+
+
+@app.post("/api/sheets/criar-template")
+async def sheets_criar_template(body: SheetsRequest, request: Request):
+    session = _get_session(request)
+    if not session:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    m = re.search(r"/spreadsheets/d/([a-zA-Z0-9-_]+)", body.url)
+    if not m:
+        raise HTTPException(status_code=400, detail="URL de planilha inválida.")
+    sid = m.group(1)
+    token = session["access_token"]
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        # 1) Adiciona a nova aba
+        add_r = await client.post(
+            f"https://sheets.googleapis.com/v4/spreadsheets/{sid}:batchUpdate",
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            json={"requests": [{"addSheet": {"properties": {"title": "Orçamento — Template"}}}]},
+        )
+        if add_r.status_code == 401:
+            raise HTTPException(status_code=401, detail="Token expirado. Faça login novamente.")
+        if add_r.status_code == 400:
+            detail = add_r.json().get("error", {}).get("message", "Erro ao criar aba.")
+            raise HTTPException(status_code=400, detail=detail)
+        add_r.raise_for_status()
+
+        new_gid   = add_r.json()["replies"][0]["addSheet"]["properties"]["sheetId"]
+        new_title = "Orçamento — Template"
+
+        # 2) Escreve cabeçalho + linha exemplo
+        encoded_range = urllib.parse.quote(f"'{new_title}'!A1", safe="!:'")
+        write_r = await client.put(
+            f"https://sheets.googleapis.com/v4/spreadsheets/{sid}/values/{encoded_range}"
+            "?valueInputOption=USER_ENTERED",
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            json={"values": [_TEMPLATE_HEADERS, _TEMPLATE_EXAMPLE]},
+        )
+        write_r.raise_for_status()
+
+    return {"gid": new_gid, "title": new_title}
+
+
+OLLAMA_MODEL = "llama3.1:8b"
+OLLAMA_BASE  = "http://localhost:11434"
+
+
+@app.get("/api/ollama/status")
+async def ollama_status():
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            ps = await client.get(f"{OLLAMA_BASE}/api/ps")
+            ps.raise_for_status()
+            modelos_ativos = [m["name"] for m in ps.json().get("models", [])]
+            carregado = any(OLLAMA_MODEL in m for m in modelos_ativos)
+            return {"online": True, "carregado": carregado, "model": OLLAMA_MODEL, "ativos": modelos_ativos}
+    except Exception:
+        return {"online": False, "carregado": False, "model": OLLAMA_MODEL, "ativos": []}
+
+
+@app.post("/api/ollama/carregar")
+async def ollama_carregar(request: Request):
+    session = _get_session(request)
+    if not session:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        async with httpx.AsyncClient(timeout=120) as client:
+            r = await client.post(
+                f"{OLLAMA_BASE}/api/generate",
+                json={"model": OLLAMA_MODEL, "prompt": "", "keep_alive": -1, "stream": False},
+            )
+            r.raise_for_status()
+        return {"ok": True, "model": OLLAMA_MODEL}
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Ollama não respondeu: {e}")
+
+
+class MelhorarTextoRequest(BaseModel):
+    texto: str
+    modo: str = "completo"   # "minimo" | "completo" | "livre"
+    instrucao: str = ""
+
+
+def _build_melhorar_prompt(texto: str, modo: str, instrucao: str) -> str:
+    if modo == "minimo":
+        return (
+            "Corrija erros de ortografia e gramática (português brasileiro) e formate em Markdown básico.\n"
+            "Regras:\n"
+            "- Use **negrito** apenas para termos técnicos e títulos\n"
+            "- Corrija SOMENTE erros de escrita — não altere, resuma ou expanda o conteúdo\n"
+            "- Retorne SOMENTE o texto corrigido, sem comentários ou prefixos\n\n"
+            f"Texto:\n{texto}"
+        )
+    if modo == "livre":
+        base = f"Texto base:\n{texto}" if texto else "(sem texto base — crie a partir da instrução)"
+        return (
+            "Você é um assistente de redação para orçamentos comerciais de iluminação.\n"
+            f"Instrução: {instrucao}\n\n"
+            "Regras:\n"
+            "- Português brasileiro, tom profissional e formal\n"
+            "- Formate em Markdown: **negrito** para termos técnicos, listas quando adequado\n"
+            "- Preserve informações técnicas do texto base (se houver)\n"
+            "- Retorne SOMENTE o texto, sem prefixos ou explicações\n\n"
+            f"{base}"
+        )
+    # modo "completo" (padrão)
+    return (
+        "Você é um assistente especializado em redação profissional para orçamentos comerciais de iluminação.\n\n"
+        "Melhore o texto abaixo seguindo estas regras:\n"
+        "1. Corrija erros de digitação e gramática (português brasileiro)\n"
+        "2. Organize em Markdown bem estruturado: use **negrito** para termos técnicos importantes, "
+        "listas com hífen quando houver enumerações, parágrafos separados por linha em branco\n"
+        "3. Mantenha tom profissional e formal, adequado para um documento comercial\n"
+        "4. Preserve TODAS as informações técnicas originais — não invente nada que não esteja no texto\n"
+        "5. Se o texto já estiver bem escrito, faça apenas ajustes mínimos necessários\n\n"
+        "Retorne SOMENTE o texto melhorado em Markdown, sem explicações, sem prefixos como 'Aqui está:' ou similares.\n\n"
+        f"Texto original:\n{texto}"
+    )
+
+
+@app.post("/api/ollama/melhorar-texto")
+async def ollama_melhorar_texto(body: MelhorarTextoRequest, request: Request):
+    session = _get_session(request)
+    if not session:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    texto = body.texto.strip()
+    modo  = body.modo if body.modo in ("minimo", "completo", "livre") else "completo"
+
+    if modo != "livre" and not texto:
+        raise HTTPException(status_code=400, detail="Texto vazio.")
+    if modo == "livre" and not body.instrucao.strip() and not texto:
+        raise HTTPException(status_code=400, detail="No modo livre informe uma instrução ou texto base.")
+
+    prompt = _build_melhorar_prompt(texto, modo, body.instrucao.strip())
+
+    async with httpx.AsyncClient(timeout=120) as client:
+        r = await client.post(
+            OLLAMA_URL,
+            json={"model": "llama3.1:8b", "prompt": prompt, "stream": False},
+        )
+
+    if not r.is_success:
+        raise HTTPException(status_code=502, detail="Ollama não respondeu. Verifique se o serviço está ativo.")
+
+    sugestao = r.json().get("response", "").strip()
+    if not sugestao:
+        raise HTTPException(status_code=502, detail="Ollama retornou resposta vazia.")
+
+    return {"sugestao": sugestao}
 
 
 class OrcamentoRequest(BaseModel):
@@ -712,9 +933,14 @@ class OrcamentoRequest(BaseModel):
     total: float
     client_name: str
     client_cnpj: str = ""
-    validade: str = ""       # ex: "28/04/2026"
-    observacoes: str = ""    # texto livre para a seção Descrição do Projeto
-    pagamento: list[dict] = []  # [{prazo, valor}]
+    validade: str = ""
+    descricao_projeto: str = ""
+    observacoes: str = ""
+    pagamento: list[dict] = []
+    endereco: str = ""
+    responsavel: str = ""
+    telefone: str = ""
+    email_contato: str = ""
 
 
 @app.post("/api/orcamento/gerar-pdf")
@@ -751,11 +977,21 @@ async def gerar_pdf_api(body: OrcamentoRequest, request: Request):
 
 """
 
-    # Optional project description
-    descricao_md = ""
+    descricao_projeto_md = ""
+    if body.descricao_projeto.strip():
+        descricao_projeto_md = f"""\
+## 📋 Descrição do Projeto
+
+{body.descricao_projeto.strip()}
+
+---
+
+"""
+
+    info_adicionais_md = ""
     if body.observacoes.strip():
-        descricao_md = f"""\
-## 📝 Descrição do Projeto
+        info_adicionais_md = f"""\
+## 📝 Informações Adicionais
 
 {body.observacoes.strip()}
 
@@ -763,26 +999,43 @@ async def gerar_pdf_api(body: OrcamentoRequest, request: Request):
 
 """
 
-    validade_line = f"**VALIDADE:** {body.validade}\n" if body.validade else ""
+    # Linha 1 — data e validade, alinhadas à direita
+    date_parts = [f"<strong>DATA:</strong> {today}"]
+    if body.validade:
+        date_parts.append(f"<strong>VALIDADE:</strong> {body.validade}")
+    date_line_html = (
+        '<div style="text-align:right; font-size:0.88em; margin-bottom:0.6em; color:#444;">'
+        + " &nbsp;&nbsp;&nbsp; ".join(date_parts)
+        + "</div>"
+    )
+
+    # Linhas restantes — à esquerda
+    cnpj_line  = f"**CNPJ:** {body.client_cnpj}  \n" if body.client_cnpj  else ""
+    end_line   = f"**ENDEREÇO:** {body.endereco}  \n" if body.endereco    else ""
+    resp_line  = f"**RESPONSÁVEL:** {body.responsavel}  \n" if body.responsavel else ""
+
+    # Telefone e e-mail na mesma linha
+    contact_parts = []
+    if body.telefone:    contact_parts.append(f"**Tel:** {body.telefone}")
+    if body.email_contato: contact_parts.append(f"**E-mail:** {body.email_contato}")
+    contact_line = "  &nbsp;&nbsp;|&nbsp;&nbsp;  ".join(contact_parts) + "  \n" if contact_parts else ""
 
     md_content = f"""# ORÇAMENTO DE ILUMINAÇÃO - {body.client_name.upper()}
 
+{date_line_html}
+
 **CLIENTE:** {body.client_name.upper()}
-**CNPJ:** {body.client_cnpj}
-**DATA:** {today}
-{validade_line}
+{cnpj_line}{end_line}{resp_line}{contact_line}
 ---
 
-{descricao_md}## 📦 Itens do Orçamento
+{descricao_projeto_md}## 📦 Itens do Orçamento
 
 | Ambiente | Grupo | Qtd | Valor Unit. | Total |
 | :--- | :--- | :---: | :--- | :--- |
 {table_rows}
 ---
 
-{pagamento_md}{_NOTAS_TECNICAS}
-
----
+{pagamento_md}{info_adicionais_md}---
 
 ## 🖋️ Confirmação de Pedido
 Confirmo os valores, condições de pagamentos e quantidades dos produtos acima relacionados.
