@@ -14,6 +14,7 @@ import re
 import uuid
 import sys
 import tempfile
+import asyncio
 import urllib.parse
 from datetime import datetime, timezone
 
@@ -708,14 +709,26 @@ async def sheets_processar(body: SheetsRequest, request: Request):
         for sh in sheets_list:
             props = sh.get("properties", {})
             if props.get("sheetId") == target_gid:
-                sheet_title = props.get("title", "")
-                col_count   = props.get("gridProperties", {}).get("columnCount", 50)
+                title_candidate = props.get("title", "")
+                # ignora abas de metadados (começam com _) e usa a primeira aba de itens
+                if not title_candidate.startswith("_"):
+                    sheet_title = title_candidate
+                    col_count   = props.get("gridProperties", {}).get("columnCount", 50)
                 break
-        # Se o gid não foi encontrado, usa a primeira aba
-        if sheet_title is None and sheets_list:
-            props       = sheets_list[0].get("properties", {})
-            sheet_title = props.get("title", "")
-            col_count   = props.get("gridProperties", {}).get("columnCount", 50)
+        # Se o gid não foi encontrado ou apontava para aba de metadados:
+        # prefere "Orçamento — Template" ou qualquer aba iniciada com "Orçamento", depois primeira não-metadata
+        if sheet_title is None:
+            non_meta = [
+                sh["properties"] for sh in sheets_list
+                if not sh.get("properties", {}).get("title", "").startswith("_")
+            ]
+            preferred = next(
+                (p for p in non_meta if p.get("title", "").startswith("Orçamento")),
+                non_meta[0] if non_meta else None,
+            )
+            if preferred:
+                sheet_title = preferred.get("title", "")
+                col_count   = preferred.get("gridProperties", {}).get("columnCount", 50)
 
         # 2) Constrói o range dinâmico com todas as colunas reais da aba
         last_col    = _col_letter(col_count)
@@ -745,6 +758,30 @@ async def sheets_processar(body: SheetsRequest, request: Request):
             status_code=422,
             detail=f"Nenhum item encontrado na aba '{sheet_title}'. Cabeçalhos detectados: [{header_sample}]. Verifique se as colunas AMBIENTE e GRUPO existem e se há linhas com Quantidade > 0."
         )
+
+    # Lê abas de metadados (opcionais — não falha se não existirem)
+    async def _ler_meta(tab: str, rng: str = "A1:B30") -> list:
+        enc = urllib.parse.quote(f"'{tab}'!{rng}", safe="!:'")
+        try:
+            async with httpx.AsyncClient(timeout=10) as c:
+                r = await c.get(
+                    f"https://sheets.googleapis.com/v4/spreadsheets/{sid}/values/{enc}",
+                    headers={"Authorization": f"Bearer {session['access_token']}"},
+                )
+            return r.json().get("values", []) if r.is_success else []
+        except Exception:
+            return []
+
+    cli_rows, desc_rows, pag_rows, obs_rows = await asyncio.gather(
+        _ler_meta("_Clientes"), _ler_meta("_Descricao"), _ler_meta("_Pagamento"), _ler_meta("_Observacoes"),
+    )
+    result["clientes"]     = {row[0].strip(): (row[1].strip() if len(row) > 1 else "") for row in cli_rows[1:] if row}
+    result["descricao"]    = (desc_rows[1][0].strip() if len(desc_rows) > 1 and desc_rows[1] else "")
+    result["pagamento_meta"] = [
+        {"prazo": row[0].strip(), "valor": round(_parse_brl(row[1]), 2)}
+        for row in pag_rows[1:] if len(row) > 1 and row[1].strip() and _parse_brl(row[1]) > 0
+    ]
+    result["observacoes"]  = (obs_rows[1][0].strip() if len(obs_rows) > 1 and obs_rows[1] else "")
     return result
 
 
@@ -817,6 +854,155 @@ async def sheets_criar_template(body: SheetsRequest, request: Request):
         write_r.raise_for_status()
 
     return {"gid": new_gid, "title": new_title}
+
+
+_META_CLIENTES = [
+    ["Campo", "Valor"],
+    ["Nome", ""], ["CNPJ", ""], ["CEP", ""], ["Endereço", ""],
+    ["Responsável", ""], ["Telefone", ""], ["E-mail de Contato", ""], ["Validade", ""],
+]
+_META_PAGAMENTO = [["Prazo", "Valor"]] + [
+    [p, ""] for p in ["À Vista","28 Dias","30 Dias","60 Dias","90 Dias","120 Dias","150 Dias","180 Dias","210 Dias"]
+]
+
+
+async def _aba_escrever(client: httpx.AsyncClient, sid: str, token: str, title: str, values: list,
+                        force: bool = False):
+    """Cria a aba se não existir e escreve os valores.
+    Se a aba já existe e tem dados do usuário (> 1 linha preenchida), preserva — a não ser que force=True.
+    """
+    hdr = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    add = await client.post(
+        f"https://sheets.googleapis.com/v4/spreadsheets/{sid}:batchUpdate",
+        headers=hdr,
+        json={"requests": [{"addSheet": {"properties": {"title": title}}}]},
+    )
+    if add.status_code == 401:
+        raise HTTPException(status_code=401, detail="Token expirado. Faça login novamente.")
+    if add.status_code == 400 and not force:
+        # aba já existe — verifica se tem dados do usuário (além do cabeçalho)
+        enc_check = urllib.parse.quote(f"'{title}'!A1:B20", safe="!:'")
+        check = await client.get(
+            f"https://sheets.googleapis.com/v4/spreadsheets/{sid}/values/{enc_check}",
+            headers=hdr,
+        )
+        existing = check.json().get("values", []) if check.is_success else []
+        # conta linhas com pelo menos uma célula não vazia após o cabeçalho
+        filled = sum(1 for row in existing[1:] if any(str(c).strip() for c in row if c))
+        if filled > 0:
+            return  # preserva dados do usuário
+    enc = urllib.parse.quote(f"'{title}'!A1", safe="!:'")
+    wr = await client.put(
+        f"https://sheets.googleapis.com/v4/spreadsheets/{sid}/values/{enc}?valueInputOption=USER_ENTERED",
+        headers=hdr,
+        json={"values": values},
+    )
+    if wr.status_code == 401:
+        raise HTTPException(status_code=401, detail="Token expirado. Faça login novamente.")
+    wr.raise_for_status()
+
+
+@app.post("/api/sheets/criar-template-completo")
+async def sheets_criar_template_completo(body: SheetsRequest, request: Request):
+    session = _get_session(request)
+    if not session:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    m = re.search(r"/spreadsheets/d/([a-zA-Z0-9-_]+)", body.url)
+    if not m:
+        raise HTTPException(status_code=400, detail="URL inválida")
+    sid, token = m.group(1), session["access_token"]
+
+    async with httpx.AsyncClient(timeout=45) as client:
+        await _aba_escrever(client, sid, token, "Orçamento — Template", [_TEMPLATE_HEADERS, _TEMPLATE_EXAMPLE])
+        await _aba_escrever(client, sid, token, "_Clientes",    _META_CLIENTES)
+        await _aba_escrever(client, sid, token, "_Descricao",   [["Descrição do Projeto"], [""]])
+        await _aba_escrever(client, sid, token, "_Pagamento",   _META_PAGAMENTO)
+        await _aba_escrever(client, sid, token, "_Observacoes", [["Informações Adicionais"], [""]])
+
+    return {"ok": True, "abas": ["Orçamento — Template", "_Clientes", "_Descricao", "_Pagamento", "_Observacoes"]}
+
+
+class SheetsCarregarRequest(BaseModel):
+    url: str
+
+
+@app.post("/api/sheets/carregar-completo")
+async def sheets_carregar_completo(body: SheetsCarregarRequest, request: Request):
+    session = _get_session(request)
+    if not session:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    m = re.search(r"/spreadsheets/d/([a-zA-Z0-9-_]+)", body.url)
+    if not m:
+        raise HTTPException(status_code=400, detail="URL inválida")
+    sid, token = m.group(1), session["access_token"]
+
+    async def _ler(tab: str, rng: str = "A1:B30") -> list:
+        enc = urllib.parse.quote(f"'{tab}'!{rng}", safe="!:'")
+        async with httpx.AsyncClient(timeout=15) as c:
+            r = await c.get(
+                f"https://sheets.googleapis.com/v4/spreadsheets/{sid}/values/{enc}",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        return r.json().get("values", []) if r.is_success else []
+
+    cli_rows, desc_rows, pag_rows, obs_rows = await asyncio.gather(
+        _ler("_Clientes"), _ler("_Descricao"), _ler("_Pagamento"), _ler("_Observacoes"),
+    )
+
+    clientes = {row[0].strip(): (row[1].strip() if len(row) > 1 else "") for row in cli_rows[1:] if row}
+    descricao = (desc_rows[1][0].strip() if len(desc_rows) > 1 and desc_rows[1] else "")
+    pagamento = [
+        {"prazo": row[0].strip(), "valor": round(_parse_brl(row[1]), 2)}
+        for row in pag_rows[1:] if len(row) > 1 and row[1].strip() and _parse_brl(row[1]) > 0
+    ]
+    observacoes = (obs_rows[1][0].strip() if len(obs_rows) > 1 and obs_rows[1] else "")
+
+    return {"clientes": clientes, "descricao": descricao, "pagamento": pagamento, "observacoes": observacoes}
+
+
+class SheetsSalvarRequest(BaseModel):
+    url: str
+    nome: str = ""
+    cnpj: str = ""
+    cep: str = ""
+    endereco: str = ""
+    responsavel: str = ""
+    telefone: str = ""
+    email_contato: str = ""
+    validade: str = ""
+    descricao: str = ""
+    observacoes: str = ""
+    pagamento: list[dict] = []
+
+
+@app.post("/api/sheets/salvar-dados")
+async def sheets_salvar_dados(body: SheetsSalvarRequest, request: Request):
+    session = _get_session(request)
+    if not session:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    m = re.search(r"/spreadsheets/d/([a-zA-Z0-9-_]+)", body.url)
+    if not m:
+        raise HTTPException(status_code=400, detail="URL inválida")
+    sid, token = m.group(1), session["access_token"]
+
+    pag_map = {p["prazo"]: p["valor"] for p in body.pagamento}
+    pag_values = [["Prazo", "Valor"]] + [
+        [lbl, f"{pag_map[lbl]:.2f}".replace(".", ",") if lbl in pag_map else ""]
+        for lbl in ["À Vista","28 Dias","30 Dias","60 Dias","90 Dias","120 Dias","150 Dias","180 Dias","210 Dias"]
+    ]
+
+    async with httpx.AsyncClient(timeout=45) as client:
+        await _aba_escrever(client, sid, token, "_Clientes", [
+            ["Campo", "Valor"],
+            ["Nome", body.nome], ["CNPJ", body.cnpj], ["CEP", body.cep], ["Endereço", body.endereco],
+            ["Responsável", body.responsavel], ["Telefone", body.telefone],
+            ["E-mail de Contato", body.email_contato], ["Validade", body.validade],
+        ], force=True)
+        await _aba_escrever(client, sid, token, "_Descricao",   [["Descrição do Projeto"], [body.descricao]], force=True)
+        await _aba_escrever(client, sid, token, "_Pagamento",   pag_values, force=True)
+        await _aba_escrever(client, sid, token, "_Observacoes", [["Informações Adicionais"], [body.observacoes]], force=True)
+
+    return {"ok": True}
 
 
 OLLAMA_MODEL = "llama3.1:8b"
